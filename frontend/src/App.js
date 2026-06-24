@@ -54,7 +54,7 @@ function App() {
               <Route path="task" element={<Guard module="task"><Task /></Guard>} />
               <Route path="pontaj" element={<Pontaj />} />
               <Route path="jafuri" element={<Guard module="jafuri"><Jafuri /></Guard>} />
-              <Route path="loterie" element={<Loterie />} />
+              <Route path="loterie" element={<Guard module="loterie"><Loterie /></Guard>} />
               <Route path="fonduri" element={<Fonduri />} />
               <Route path="rapoarte" element={<Rapoarte />} />
               <Route path="membri" element={<Membri />} />

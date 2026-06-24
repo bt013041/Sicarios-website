@@ -4,10 +4,10 @@ import { useAuth } from "@/context/AuthContext";
 import { fmtMoney, ROLE_LABEL, ROLE_OPTIONS } from "@/lib/utils-cartel";
 import { PageHeader } from "@/components/ui-cartel";
 import { toast } from "sonner";
-import { Crown, Shield, Ticket, Trash2 } from "lucide-react";
+import { Crown, Shield, Ticket, Trash2, Handshake } from "lucide-react";
 
-const ROLE_ICON = { boss: Crown, sicarios: Shield, loterie: Ticket };
-const ROLE_COLOR = { boss: "text-cartel-red", sicarios: "text-cartel-gold", loterie: "text-cartel-discord" };
+const ROLE_ICON = { boss: Crown, sicarios: Shield, asociat: Handshake, loterie: Ticket };
+const ROLE_COLOR = { boss: "text-cartel-red", sicarios: "text-cartel-gold", asociat: "text-cartel-textsec", loterie: "text-cartel-discord" };
 
 export default function Membri() {
   const { user, canGrade } = useAuth();

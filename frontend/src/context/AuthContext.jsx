@@ -42,6 +42,7 @@ export function AuthProvider({ children }) {
   const ACCESS = {
     boss: ["dashboard", "task", "pontaj", "jafuri", "loterie", "fonduri", "rapoarte", "membri"],
     sicarios: ["dashboard", "task", "pontaj", "jafuri", "loterie", "fonduri", "rapoarte", "membri"],
+    asociat: ["dashboard", "pontaj", "jafuri", "fonduri", "rapoarte", "membri"],
     loterie: ["dashboard", "pontaj", "loterie", "fonduri", "rapoarte", "membri"],
   };
   const role = user?.role;

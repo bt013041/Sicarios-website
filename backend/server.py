@@ -78,11 +78,12 @@ class User(BaseModel):
     created_at: str = Field(default_factory=now_iso)
 
 
-ROLES = {"boss", "sicarios", "loterie"}
+ROLES = {"boss", "sicarios", "asociat", "loterie"}
 # Module access per role
 ACCESS = {
     "boss": {"dashboard", "task", "pontaj", "jafuri", "loterie", "fonduri", "rapoarte", "membri"},
     "sicarios": {"dashboard", "task", "pontaj", "jafuri", "loterie", "fonduri", "rapoarte", "membri"},
+    "asociat": {"dashboard", "pontaj", "jafuri", "fonduri", "rapoarte", "membri"},
     "loterie": {"dashboard", "pontaj", "loterie", "fonduri", "rapoarte", "membri"},
 }
 
@@ -323,7 +324,7 @@ async def delete_pontaj(item_id: str, user: dict = Depends(get_current_user)):
 
 # ---------- Jafuri ----------
 @api_router.post("/jafuri")
-async def create_jaf(body: JafCreate, user: dict = Depends(require_roles("boss", "sicarios"))):
+async def create_jaf(body: JafCreate, user: dict = Depends(require_roles("boss", "sicarios", "asociat"))):
     if body.type not in ("magazin", "banca"):
         raise HTTPException(status_code=400, detail="Tip invalid")
     d = parse_date(body.date)
@@ -346,14 +347,14 @@ async def create_jaf(body: JafCreate, user: dict = Depends(require_roles("boss",
 
 
 @api_router.get("/jafuri")
-async def list_jafuri(week: Optional[str] = None, user: dict = Depends(require_roles("boss", "sicarios"))):
+async def list_jafuri(week: Optional[str] = None, user: dict = Depends(require_roles("boss", "sicarios", "asociat"))):
     q = {"week": week} if week else {}
     rows = await db.jafuri.find(q).sort("date", -1).to_list(2000)
     return [clean(r) for r in rows]
 
 
 @api_router.delete("/jafuri/{item_id}")
-async def delete_jaf(item_id: str, user: dict = Depends(require_roles("boss", "sicarios"))):
+async def delete_jaf(item_id: str, user: dict = Depends(require_roles("boss", "sicarios", "asociat"))):
     item = await db.jafuri.find_one({"id": item_id})
     if not item:
         raise HTTPException(status_code=404, detail="Inexistent")
@@ -403,8 +404,7 @@ async def create_task(body: TaskCreate, user: dict = Depends(require_roles("boss
         "title": body.title,
         "description": body.description or "",
         "week": body.week or current_week(),
-        "done": False,
-        "done_by": "",
+        "completed_by": [],
         "created_by": user["username"],
         "created_at": now_iso(),
     }
@@ -424,11 +424,18 @@ async def toggle_task(task_id: str, user: dict = Depends(require_roles("boss", "
     item = await db.tasks.find_one({"id": task_id})
     if not item:
         raise HTTPException(status_code=404, detail="Inexistent")
-    new_done = not item.get("done", False)
-    await db.tasks.update_one(
-        {"id": task_id},
-        {"$set": {"done": new_done, "done_by": user["username"] if new_done else ""}},
-    )
+    completed = item.get("completed_by", []) or []
+    has = any(c.get("user_id") == user["id"] for c in completed)
+    if has:
+        completed = [c for c in completed if c.get("user_id") != user["id"]]
+    else:
+        completed = completed + [{
+            "user_id": user["id"],
+            "username": user["username"],
+            "avatar_url": user.get("avatar_url", ""),
+            "at": now_iso(),
+        }]
+    await db.tasks.update_one({"id": task_id}, {"$set": {"completed_by": completed}})
     return clean(await db.tasks.find_one({"id": task_id}))
 
 
@@ -491,7 +498,7 @@ async def dashboard(week: Optional[str] = None, user: dict = Depends(get_current
         {"$group": {"_id": None, "total": {"$sum": "$hours"}}},
     ]).to_list(1)
     tasks = await db.tasks.find({"week": week}).to_list(1000)
-    tasks_done = len([t for t in tasks if t.get("done")])
+    tasks_done = len([t for t in tasks if t.get("completed_by")])
     recent_jaf = [clean(r) for r in await db.jafuri.find({"week": week}).sort("date", -1).to_list(5)]
     return {
         "week": week,

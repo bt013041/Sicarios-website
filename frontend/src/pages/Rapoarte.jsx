@@ -6,8 +6,8 @@ import { PageHeader, WeekNav } from "@/components/ui-cartel";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 export default function Rapoarte() {
-  const { role } = useAuth();
-  const isLoterie = role === "loterie";
+  const { canAccess } = useAuth();
+  const showJafuri = canAccess("jafuri");
   const [week, setWeek] = useState(currentWeek());
   const [data, setData] = useState(null);
 
@@ -24,8 +24,8 @@ export default function Rapoarte() {
         <WeekNav week={week} setWeek={setWeek} />
       </PageHeader>
 
-      <div className={`grid gap-6 ${isLoterie ? "" : "lg:grid-cols-2"}`}>
-        {!isLoterie && (
+      <div className={`grid gap-6 ${showJafuri ? "lg:grid-cols-2" : ""}`}>
+        {showJafuri && (
           <div className="bg-cartel-surface border border-cartel-border rounded-sm">
             <div className="border-b border-cartel-border p-4 bg-cartel-elevated"><span className="label-mono">Top jafuri (sumă)</span></div>
             <div className="p-4 h-72">
@@ -60,8 +60,8 @@ export default function Rapoarte() {
       </div>
 
       <div className="bg-cartel-surface border border-cartel-border rounded-sm mt-6 p-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="rapoarte-summary">
-        {!isLoterie && <div><div className="label-mono mb-1">Total jafuri</div><div className="font-heading text-3xl text-cartel-red">{fmtMoney(f.jafuri_total)}</div></div>}
-        {!isLoterie && <div><div className="label-mono mb-1">Nr. jafuri</div><div className="font-heading text-3xl text-cartel-text">{f.jafuri_count || 0}</div></div>}
+        {showJafuri && <div><div className="label-mono mb-1">Total jafuri</div><div className="font-heading text-3xl text-cartel-red">{fmtMoney(f.jafuri_total)}</div></div>}
+        {showJafuri && <div><div className="label-mono mb-1">Nr. jafuri</div><div className="font-heading text-3xl text-cartel-text">{f.jafuri_count || 0}</div></div>}
         <div><div className="label-mono mb-1">Premii loterie</div><div className="font-heading text-3xl text-cartel-success">{fmtMoney(f.loterie_total)}</div></div>
         <div><div className="label-mono mb-1">Total fonduri</div><div className="font-heading text-3xl text-cartel-gold">{fmtMoney(f.total)}</div></div>
       </div>

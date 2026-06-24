@@ -6,8 +6,8 @@ import { PageHeader, WeekNav, StatCard } from "@/components/ui-cartel";
 import { Wallet, Crosshair, Ticket } from "lucide-react";
 
 export default function Fonduri() {
-  const { role } = useAuth();
-  const isLoterie = role === "loterie";
+  const { canAccess } = useAuth();
+  const showJafuri = canAccess("jafuri");
   const [week, setWeek] = useState(currentWeek());
   const [data, setData] = useState(null);
   const [weeks, setWeeks] = useState([]);
@@ -21,7 +21,7 @@ export default function Fonduri() {
   }, []);
 
   const d = data || {};
-  const cols = isLoterie ? ["Săptămână", "Loterie", "Total"] : ["Săptămână", "Jafuri", "Loterie", "Total"];
+  const cols = showJafuri ? ["Săptămână", "Jafuri", "Loterie", "Total"] : ["Săptămână", "Loterie", "Total"];
 
   return (
     <div className="animate-fade-up">
@@ -35,15 +35,15 @@ export default function Fonduri() {
           {fmtMoney(d.total)}
         </div>
         <div className="flex gap-6 mt-4 text-sm font-mono text-cartel-textsec">
-          {!isLoterie && <span>Jafuri: <span className="text-cartel-red">{fmtMoney(d.jafuri_total)}</span></span>}
+          {showJafuri && <span>Jafuri: <span className="text-cartel-red">{fmtMoney(d.jafuri_total)}</span></span>}
           <span>Loterie (premii): <span className="text-cartel-success">{fmtMoney(d.loterie_total)}</span></span>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {!isLoterie && <StatCard testid="fond-jafuri" label="Jafuri" value={fmtMoney(d.jafuri_total)} accent="red" icon={Crosshair} />}
-        {!isLoterie && <StatCard testid="fond-magazin" label="din Magazin" value={fmtMoney(d.jafuri_magazin)} />}
-        {!isLoterie && <StatCard testid="fond-banca" label="din Bancă" value={fmtMoney(d.jafuri_banca)} />}
+        {showJafuri && <StatCard testid="fond-jafuri" label="Jafuri" value={fmtMoney(d.jafuri_total)} accent="red" icon={Crosshair} />}
+        {showJafuri && <StatCard testid="fond-magazin" label="din Magazin" value={fmtMoney(d.jafuri_magazin)} />}
+        {showJafuri && <StatCard testid="fond-banca" label="din Bancă" value={fmtMoney(d.jafuri_banca)} />}
         <StatCard testid="fond-loterie" label="Loterie (premii)" value={fmtMoney(d.loterie_total)} accent="gold" icon={Ticket} />
       </div>
 
@@ -62,7 +62,7 @@ export default function Fonduri() {
             {weeks.map((w) => (
               <tr key={w.week} className="border-b border-cartel-border/50 hover:bg-cartel-elevated/50 transition-colors cursor-pointer" onClick={() => setWeek(w.week)}>
                 <td className="p-3 text-sm font-mono text-cartel-text">{w.week}</td>
-                {!isLoterie && <td className="p-3 text-sm font-mono text-cartel-red">{fmtMoney(w.jafuri_total)}</td>}
+                {showJafuri && <td className="p-3 text-sm font-mono text-cartel-red">{fmtMoney(w.jafuri_total)}</td>}
                 <td className="p-3 text-sm font-mono text-cartel-success">{fmtMoney(w.loterie_total)}</td>
                 <td className="p-3 text-sm font-mono text-cartel-gold font-bold">{fmtMoney(w.total)}</td>
               </tr>

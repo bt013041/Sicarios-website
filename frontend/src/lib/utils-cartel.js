@@ -35,11 +35,13 @@ export function fmtMoney(n) {
 export const ROLE_LABEL = {
   boss: "BOSS / CONDUCERE",
   sicarios: "SICARIOS MEMBRU",
+  asociat: "ASOCIAT SICARIOS",
   loterie: "MEMBRU LOTERIE",
 };
 
 export const ROLE_OPTIONS = [
   { value: "boss", label: "Boss / Conducere" },
   { value: "sicarios", label: "Sicarios Membru" },
+  { value: "asociat", label: "Asociat Sicarios" },
   { value: "loterie", label: "Membru Loterie" },
 ];
