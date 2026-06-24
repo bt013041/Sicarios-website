@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
-import { useAuth } from "@/context/AuthContext";
 import { currentWeek } from "@/lib/utils-cartel";
 import { PageHeader, WeekNav } from "@/components/ui-cartel";
 import { toast } from "sonner";
-import { Check, Trash2, Plus } from "lucide-react";
+import { Check, Trash2, Plus, X } from "lucide-react";
 
 export default function Task() {
-  const { isAdmin } = useAuth();
   const [week, setWeek] = useState(currentWeek());
   const [tasks, setTasks] = useState([]);
   const [title, setTitle] = useState("");
@@ -45,21 +43,19 @@ export default function Task() {
         <WeekNav week={week} setWeek={setWeek} />
       </PageHeader>
 
-      {isAdmin && (
-        <form onSubmit={add} className="bg-cartel-surface border border-cartel-border rounded-sm p-5 mb-6 grid sm:grid-cols-[1fr_1fr_auto] gap-3 items-end" data-testid="task-form">
-          <div>
-            <label className="label-mono mb-2 block">Titlu task</label>
-            <input data-testid="task-title-input" value={title} onChange={(e) => setTitle(e.target.value)} className="cartel-input" placeholder="ex: 10 jafuri la magazin" />
-          </div>
-          <div>
-            <label className="label-mono mb-2 block">Descriere</label>
-            <input data-testid="task-desc-input" value={description} onChange={(e) => setDescription(e.target.value)} className="cartel-input" placeholder="detalii" />
-          </div>
-          <button data-testid="task-add-btn" className="bg-cartel-red hover:bg-cartel-redhover text-white uppercase font-heading text-xl tracking-wide px-5 py-2.5 rounded-sm flex items-center gap-2 transition-colors h-[46px]">
-            <Plus size={18} /> Adaugă
-          </button>
-        </form>
-      )}
+      <form onSubmit={add} className="bg-cartel-surface border border-cartel-border rounded-sm p-5 mb-6 grid sm:grid-cols-[1fr_1fr_auto] gap-3 items-end" data-testid="task-form">
+        <div>
+          <label className="label-mono mb-2 block">Titlu task</label>
+          <input data-testid="task-title-input" value={title} onChange={(e) => setTitle(e.target.value)} className="cartel-input" placeholder="ex: 10 jafuri la magazin" />
+        </div>
+        <div>
+          <label className="label-mono mb-2 block">Descriere</label>
+          <input data-testid="task-desc-input" value={description} onChange={(e) => setDescription(e.target.value)} className="cartel-input" placeholder="detalii" />
+        </div>
+        <button data-testid="task-add-btn" className="bg-cartel-red hover:bg-cartel-redhover text-white uppercase font-heading text-xl tracking-wide px-5 py-2.5 rounded-sm flex items-center gap-2 transition-colors h-[46px]">
+          <Plus size={18} /> Adaugă
+        </button>
+      </form>
 
       <div className="space-y-2" data-testid="task-list">
         {tasks.length === 0 && <p className="text-cartel-textmuted text-sm">Niciun task pentru această săptămână.</p>}
@@ -76,11 +72,20 @@ export default function Task() {
               <div className={`text-cartel-text ${t.done ? "line-through text-cartel-textmuted" : ""}`}>{t.title}</div>
               {t.description && <div className="text-cartel-textsec text-sm">{t.description}</div>}
             </div>
-            {isAdmin && (
-              <button data-testid={`task-delete-${t.id}`} onClick={() => remove(t.id)} className="text-cartel-textmuted hover:text-cartel-danger transition-colors">
-                <Trash2 size={16} />
-              </button>
-            )}
+            <div className="shrink-0 text-right" data-testid={`task-status-${t.id}`}>
+              {t.done ? (
+                <span className="inline-flex items-center gap-1.5 text-xs font-mono px-2.5 py-1 rounded-sm bg-cartel-success/15 text-cartel-success">
+                  <Check size={12} /> Bifat de {t.done_by || "—"}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-xs font-mono px-2.5 py-1 rounded-sm bg-cartel-border/40 text-cartel-textsec">
+                  <X size={12} /> Nerealizat
+                </span>
+              )}
+            </div>
+            <button data-testid={`task-delete-${t.id}`} onClick={() => remove(t.id)} className="text-cartel-textmuted hover:text-cartel-danger transition-colors shrink-0">
+              <Trash2 size={16} />
+            </button>
           </div>
         ))}
       </div>

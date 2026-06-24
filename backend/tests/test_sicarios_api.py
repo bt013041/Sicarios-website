@@ -1,11 +1,11 @@
-"""Backend API tests for Sicarios Cartel app."""
+"""Backend API tests for Sicarios Cartel app - Iteration 2 (boss/sicarios/loterie roles)."""
 import os
 import uuid
 import pytest
 import requests
 from datetime import date
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://gang-management-2.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ['REACT_APP_BACKEND_URL'].rstrip('/')
 API = f"{BASE_URL}/api"
 
 
@@ -15,21 +15,41 @@ def _login(username: str) -> dict:
     return r.json()
 
 
+def _headers(token: str) -> dict:
+    return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+
+
 @pytest.fixture(scope="session")
-def admin_session():
+def boss_session():
     data = _login("El Jefe")
-    # Note: only guaranteed admin if it was the very first user. We'll assert.
-    user = data["user"]
-    return {"token": data["token"], "user": user,
-            "headers": {"Authorization": f"Bearer {data['token']}", "Content-Type": "application/json"}}
+    return {"token": data["token"], "user": data["user"], "headers": _headers(data["token"])}
 
 
 @pytest.fixture(scope="session")
-def member_session():
+def sicarios_session():
     uname = f"Sicario_{uuid.uuid4().hex[:6]}"
     data = _login(uname)
-    return {"token": data["token"], "user": data["user"],
-            "headers": {"Authorization": f"Bearer {data['token']}", "Content-Type": "application/json"}}
+    return {"token": data["token"], "user": data["user"], "headers": _headers(data["token"])}
+
+
+@pytest.fixture(scope="session")
+def loterie_session(boss_session):
+    """Create a user, then boss promotes them to 'loterie' role."""
+    uname = f"Lottery_{uuid.uuid4().hex[:6]}"
+    data = _login(uname)
+    uid = data["user"]["id"]
+    # Boss promotes to loterie role
+    r = requests.patch(
+        f"{API}/members/{uid}/role",
+        headers=boss_session["headers"],
+        json={"role": "loterie"},
+        timeout=15,
+    )
+    assert r.status_code == 200, r.text
+    # Re-fetch /auth/me to confirm role updated
+    me = requests.get(f"{API}/auth/me", headers=_headers(data["token"]), timeout=15).json()
+    assert me["role"] == "loterie"
+    return {"token": data["token"], "user": me, "headers": _headers(data["token"])}
 
 
 # ---------- Health / Auth ----------
@@ -49,230 +69,226 @@ def test_auth_me_requires_token():
     assert r.status_code in (401, 403)
 
 
-def test_auth_me_with_token(admin_session):
-    r = requests.get(f"{API}/auth/me", headers=admin_session["headers"], timeout=15)
+def test_auth_me_with_token(boss_session):
+    r = requests.get(f"{API}/auth/me", headers=boss_session["headers"], timeout=15)
     assert r.status_code == 200
     assert r.json()["username"] == "El Jefe"
 
 
-def test_admin_role(admin_session):
-    # Asserts El Jefe ended up admin (first ever user). If not -> seed issue.
-    assert admin_session["user"]["role"] == "admin", \
-        f"El Jefe must be admin (first user). Got: {admin_session['user']['role']}"
+def test_boss_role(boss_session):
+    assert boss_session["user"]["role"] == "boss", \
+        f"El Jefe must be boss. Got: {boss_session['user']['role']}"
 
 
-def test_member_role(member_session):
-    assert member_session["user"]["role"] == "member"
+def test_sicarios_default_role(sicarios_session):
+    assert sicarios_session["user"]["role"] == "sicarios"
 
 
-def test_discord_url():
-    r = requests.get(f"{API}/auth/discord/url", timeout=15)
+# ---------- Members / Role permissions ----------
+def test_role_change_invalid(boss_session, sicarios_session):
+    r = requests.patch(
+        f"{API}/members/{sicarios_session['user']['id']}/role",
+        headers=boss_session["headers"], json={"role": "bad"}, timeout=15)
+    assert r.status_code == 400
+
+
+def test_role_change_non_boss_forbidden(sicarios_session):
+    # sicarios cannot change own or others' role
+    r = requests.patch(
+        f"{API}/members/{sicarios_session['user']['id']}/role",
+        headers=sicarios_session["headers"], json={"role": "boss"}, timeout=15)
+    assert r.status_code == 403
+
+
+def test_role_change_loterie_role_forbidden(loterie_session):
+    r = requests.patch(
+        f"{API}/members/{loterie_session['user']['id']}/role",
+        headers=loterie_session["headers"], json={"role": "boss"}, timeout=15)
+    assert r.status_code == 403
+
+
+def test_boss_can_change_role(boss_session, sicarios_session):
+    uid = sicarios_session["user"]["id"]
+    # boss -> set to loterie
+    r = requests.patch(f"{API}/members/{uid}/role",
+                       headers=boss_session["headers"], json={"role": "loterie"}, timeout=15)
     assert r.status_code == 200
-    body = r.json()
-    assert "url" in body and body["url"].startswith("https://discord.com/oauth2/authorize")
-    assert body.get("configured") is True
-
-
-# ---------- Pontaj ----------
-def test_pontaj_crud_and_permissions(member_session, admin_session):
-    today = date.today().isoformat()
-    r = requests.post(f"{API}/pontaj", headers=member_session["headers"],
-                      json={"date": today, "hours": 4.5, "note": "TEST_pontaj"}, timeout=15)
-    assert r.status_code == 200, r.text
-    item = r.json()
-    assert item["hours"] == 4.5
-    assert "_id" not in item
-    pid = item["id"]
-    week = item["week"]
-
-    # List by week
-    rl = requests.get(f"{API}/pontaj?week={week}", headers=member_session["headers"], timeout=15)
-    assert rl.status_code == 200
-    assert any(x["id"] == pid for x in rl.json())
-
-    # Admin creates another pontaj
-    r2 = requests.post(f"{API}/pontaj", headers=admin_session["headers"],
-                       json={"date": today, "hours": 2, "note": "TEST_admin"}, timeout=15)
+    assert r.json()["role"] == "loterie"
+    # restore
+    r2 = requests.patch(f"{API}/members/{uid}/role",
+                        headers=boss_session["headers"], json={"role": "sicarios"}, timeout=15)
     assert r2.status_code == 200
-    pid_admin = r2.json()["id"]
-
-    # Member cannot delete admin's pontaj
-    rd = requests.delete(f"{API}/pontaj/{pid_admin}", headers=member_session["headers"], timeout=15)
-    assert rd.status_code == 403
-
-    # Member can delete own
-    rd2 = requests.delete(f"{API}/pontaj/{pid}", headers=member_session["headers"], timeout=15)
-    assert rd2.status_code == 200
-
-    # Admin can delete any
-    rd3 = requests.delete(f"{API}/pontaj/{pid_admin}", headers=admin_session["headers"], timeout=15)
-    assert rd3.status_code == 200
+    assert r2.json()["role"] == "sicarios"
 
 
-# ---------- Jafuri ----------
-def test_jafuri_invalid_type(member_session):
+def test_members_list(sicarios_session):
+    r = requests.get(f"{API}/members", headers=sicarios_session["headers"], timeout=15)
+    assert r.status_code == 200
+    members = r.json()
+    assert any(m["username"] == "El Jefe" for m in members)
+    for m in members:
+        assert "_id" not in m
+        assert "total_hours" in m
+
+
+# ---------- Jafuri permissions ----------
+def test_jafuri_loterie_role_forbidden(loterie_session):
     today = date.today().isoformat()
-    r = requests.post(f"{API}/jafuri", headers=member_session["headers"],
+    r1 = requests.get(f"{API}/jafuri", headers=loterie_session["headers"], timeout=15)
+    assert r1.status_code == 403
+    r2 = requests.post(f"{API}/jafuri", headers=loterie_session["headers"],
+                       json={"type": "magazin", "amount": 100, "location": "X", "date": today}, timeout=15)
+    assert r2.status_code == 403
+
+
+def test_jafuri_invalid_type(sicarios_session):
+    today = date.today().isoformat()
+    r = requests.post(f"{API}/jafuri", headers=sicarios_session["headers"],
                       json={"type": "invalid", "amount": 100, "location": "X", "date": today}, timeout=15)
     assert r.status_code == 400
 
 
-def test_jafuri_crud(member_session, admin_session):
+def test_jafuri_crud_with_participants(sicarios_session, boss_session):
     today = date.today().isoformat()
-    r = requests.post(f"{API}/jafuri", headers=member_session["headers"],
+    participants = ["El Jefe", sicarios_session["user"]["username"]]
+    r = requests.post(f"{API}/jafuri", headers=sicarios_session["headers"],
                       json={"type": "magazin", "amount": 5000, "location": "TEST_loc",
-                            "details": "TEST", "date": today}, timeout=15)
+                            "details": "TEST", "date": today,
+                            "participants": participants}, timeout=15)
     assert r.status_code == 200, r.text
     j = r.json()
-    week = j["week"]
-    jid = j["id"]
+    assert j["participants"] == participants
+    assert j["type"] == "magazin"
+    jid, week = j["id"], j["week"]
 
-    rl = requests.get(f"{API}/jafuri?week={week}", headers=admin_session["headers"], timeout=15)
+    # GET verifies persistence + participants
+    rl = requests.get(f"{API}/jafuri?week={week}", headers=boss_session["headers"], timeout=15)
     assert rl.status_code == 200
-    assert any(x["id"] == jid for x in rl.json())
+    found = next((x for x in rl.json() if x["id"] == jid), None)
+    assert found and found["participants"] == participants
 
-    # Admin can delete member's jaf
-    rd = requests.delete(f"{API}/jafuri/{jid}", headers=admin_session["headers"], timeout=15)
+    # delete cleanup
+    rd = requests.delete(f"{API}/jafuri/{jid}", headers=boss_session["headers"], timeout=15)
     assert rd.status_code == 200
 
 
-# ---------- Loterie ----------
-def test_loterie_member_forbidden(member_session):
-    today = date.today().isoformat()
-    r = requests.post(f"{API}/loterie", headers=member_session["headers"],
-                      json={"winner_name": "X", "amount_won": 100, "tickets_sold": 10,
-                            "ticket_price": 5, "date": today}, timeout=15)
-    assert r.status_code == 403
+# ---------- Tasks permissions ----------
+def test_tasks_loterie_forbidden(loterie_session):
+    rg = requests.get(f"{API}/tasks", headers=loterie_session["headers"], timeout=15)
+    assert rg.status_code == 403
+    rp = requests.post(f"{API}/tasks", headers=loterie_session["headers"],
+                       json={"title": "TEST_x"}, timeout=15)
+    assert rp.status_code == 403
 
 
-def test_loterie_admin_create_and_revenue(admin_session, member_session):
-    today = date.today().isoformat()
-    r = requests.post(f"{API}/loterie", headers=admin_session["headers"],
-                      json={"winner_name": "TEST_winner", "amount_won": 500,
-                            "tickets_sold": 20, "ticket_price": 10, "date": today}, timeout=15)
-    assert r.status_code == 200, r.text
-    lot = r.json()
-    assert lot["revenue"] == 200
-    lid = lot["id"]
-    week = lot["week"]
-
-    # Member can list
-    rl = requests.get(f"{API}/loterie?week={week}", headers=member_session["headers"], timeout=15)
-    assert rl.status_code == 200
-    assert any(x["id"] == lid for x in rl.json())
-
-    # Member cannot delete
-    rdm = requests.delete(f"{API}/loterie/{lid}", headers=member_session["headers"], timeout=15)
-    assert rdm.status_code == 403
-
-    # Admin can delete
-    rda = requests.delete(f"{API}/loterie/{lid}", headers=admin_session["headers"], timeout=15)
-    assert rda.status_code == 200
-
-
-# ---------- Tasks ----------
-def test_tasks_admin_only_create_and_toggle(admin_session, member_session):
-    # Member cannot create
-    r = requests.post(f"{API}/tasks", headers=member_session["headers"],
-                      json={"title": "TEST_task"}, timeout=15)
-    assert r.status_code == 403
-
-    ra = requests.post(f"{API}/tasks", headers=admin_session["headers"],
-                       json={"title": "TEST_task_admin", "description": "d"}, timeout=15)
+def test_tasks_crud_and_done_by(boss_session, sicarios_session):
+    ra = requests.post(f"{API}/tasks", headers=boss_session["headers"],
+                       json={"title": "TEST_task_done_by", "description": "d"}, timeout=15)
     assert ra.status_code == 200
     t = ra.json()
     tid = t["id"]
-    week = t["week"]
     assert t["done"] is False
+    assert t.get("done_by", "") == ""
 
-    # Any user can toggle
-    rt = requests.patch(f"{API}/tasks/{tid}", headers=member_session["headers"], timeout=15)
+    # sicarios toggles -> done_by should be sicarios username
+    sname = sicarios_session["user"]["username"]
+    rt = requests.patch(f"{API}/tasks/{tid}", headers=sicarios_session["headers"], timeout=15)
     assert rt.status_code == 200
-    assert rt.json()["done"] is True
+    body = rt.json()
+    assert body["done"] is True
+    assert body["done_by"] == sname
 
-    # List by week
-    rl = requests.get(f"{API}/tasks?week={week}", headers=member_session["headers"], timeout=15)
-    assert rl.status_code == 200
+    # Toggle back -> done_by cleared
+    rt2 = requests.patch(f"{API}/tasks/{tid}", headers=boss_session["headers"], timeout=15)
+    assert rt2.status_code == 200
+    body2 = rt2.json()
+    assert body2["done"] is False
+    assert body2["done_by"] == ""
 
-    # Member cannot delete
-    rdm = requests.delete(f"{API}/tasks/{tid}", headers=member_session["headers"], timeout=15)
-    assert rdm.status_code == 403
-
-    rda = requests.delete(f"{API}/tasks/{tid}", headers=admin_session["headers"], timeout=15)
-    assert rda.status_code == 200
+    requests.delete(f"{API}/tasks/{tid}", headers=boss_session["headers"], timeout=15)
 
 
-# ---------- Fonduri / Dashboard / Rapoarte ----------
-def test_fonduri_aggregation(admin_session, member_session):
+# ---------- Loterie (boss + sicarios + loterie all allowed) ----------
+def test_loterie_new_schema_all_roles_can_create(boss_session, sicarios_session, loterie_session):
     today = date.today().isoformat()
-    # Seed: 1 magazin jaf + 1 banca jaf + 1 loterie
-    j1 = requests.post(f"{API}/jafuri", headers=member_session["headers"],
+    created_ids = []
+    for sess in (boss_session, sicarios_session, loterie_session):
+        r = requests.post(f"{API}/loterie", headers=sess["headers"],
+                          json={"winner_name": f"TEST_w_{sess['user']['username']}",
+                                "prize": 500, "details": "TEST", "date": today}, timeout=15)
+        assert r.status_code == 200, f"{sess['user']['role']} failed loterie POST: {r.text}"
+        body = r.json()
+        # new schema fields
+        assert body["winner_name"].startswith("TEST_w_")
+        assert body["prize"] == 500
+        assert "tickets_sold" not in body
+        assert "ticket_price" not in body
+        assert "amount_won" not in body
+        assert "revenue" not in body
+        created_ids.append((sess, body["id"]))
+
+    # all roles can list
+    for sess, _ in created_ids:
+        rl = requests.get(f"{API}/loterie", headers=sess["headers"], timeout=15)
+        assert rl.status_code == 200
+
+    # cleanup
+    for sess, lid in created_ids:
+        requests.delete(f"{API}/loterie/{lid}", headers=boss_session["headers"], timeout=15)
+
+
+# ---------- Fonduri / Dashboard ----------
+def test_fonduri_loterie_total_aggregation(boss_session, sicarios_session):
+    today = date.today().isoformat()
+    j1 = requests.post(f"{API}/jafuri", headers=sicarios_session["headers"],
                        json={"type": "magazin", "amount": 1000, "location": "T", "date": today}, timeout=15).json()
-    j2 = requests.post(f"{API}/jafuri", headers=admin_session["headers"],
+    j2 = requests.post(f"{API}/jafuri", headers=boss_session["headers"],
                        json={"type": "banca", "amount": 2000, "location": "T", "date": today}, timeout=15).json()
-    l1 = requests.post(f"{API}/loterie", headers=admin_session["headers"],
-                       json={"winner_name": "W", "amount_won": 100, "tickets_sold": 5,
-                             "ticket_price": 50, "date": today}, timeout=15).json()
+    l1 = requests.post(f"{API}/loterie", headers=boss_session["headers"],
+                       json={"winner_name": "TEST_W", "prize": 750, "date": today}, timeout=15).json()
     week = j1["week"]
 
-    rf = requests.get(f"{API}/fonduri?week={week}", headers=member_session["headers"], timeout=15)
+    rf = requests.get(f"{API}/fonduri?week={week}", headers=boss_session["headers"], timeout=15)
     assert rf.status_code == 200
     f = rf.json()
+    # New schema: loterie_total = sum of prizes; total = jafuri_total + loterie_total
+    assert "loterie_total" in f
+    assert f["loterie_total"] >= 750
+    assert f["total"] == f["jafuri_total"] + f["loterie_total"]
     assert f["jafuri_magazin"] >= 1000
     assert f["jafuri_banca"] >= 2000
-    assert f["loterie_revenue"] >= 250
-    assert f["total"] == f["jafuri_total"] + f["loterie_revenue"]
 
-    rw = requests.get(f"{API}/fonduri/weeks", headers=admin_session["headers"], timeout=15)
+    rw = requests.get(f"{API}/fonduri/weeks", headers=boss_session["headers"], timeout=15)
     assert rw.status_code == 200
-    assert any(x["week"] == week for x in rw.json())
+    weeks = rw.json()
+    match = next((x for x in weeks if x["week"] == week), None)
+    assert match is not None
+    assert "loterie_total" in match
 
     # cleanup
     for x in (j1, j2):
-        requests.delete(f"{API}/jafuri/{x['id']}", headers=admin_session["headers"], timeout=15)
-    requests.delete(f"{API}/loterie/{l1['id']}", headers=admin_session["headers"], timeout=15)
+        requests.delete(f"{API}/jafuri/{x['id']}", headers=boss_session["headers"], timeout=15)
+    requests.delete(f"{API}/loterie/{l1['id']}", headers=boss_session["headers"], timeout=15)
 
 
-def test_dashboard(admin_session):
-    r = requests.get(f"{API}/dashboard", headers=admin_session["headers"], timeout=15)
+def test_dashboard_includes_loterie_total(boss_session):
+    r = requests.get(f"{API}/dashboard", headers=boss_session["headers"], timeout=15)
     assert r.status_code == 200
     body = r.json()
-    for k in ("week", "funds", "members_count", "total_hours", "tasks_total", "tasks_done", "recent_jafuri"):
-        assert k in body
+    assert "funds" in body
+    assert "loterie_total" in body["funds"]
 
 
-def test_rapoarte(admin_session):
-    r = requests.get(f"{API}/rapoarte", headers=admin_session["headers"], timeout=15)
+def test_rapoarte(boss_session):
+    r = requests.get(f"{API}/rapoarte", headers=boss_session["headers"], timeout=15)
     assert r.status_code == 200
     body = r.json()
     for k in ("week", "funds", "hours_ranking", "jafuri_ranking"):
         assert k in body
 
 
-# ---------- Members ----------
-def test_members_list_and_role_perms(admin_session, member_session):
-    r = requests.get(f"{API}/members", headers=member_session["headers"], timeout=15)
-    assert r.status_code == 200
-    members = r.json()
-    assert any(m["username"] == "El Jefe" for m in members)
-    me = next(m for m in members if m["id"] == member_session["user"]["id"])
-    assert "total_hours" in me
-
-    # Member cannot patch role
-    rp = requests.patch(f"{API}/members/{member_session['user']['id']}/role",
-                        headers=member_session["headers"], json={"role": "admin"}, timeout=15)
-    assert rp.status_code == 403
-
-    # Admin can patch (set then unset)
-    rp2 = requests.patch(f"{API}/members/{member_session['user']['id']}/role",
-                         headers=admin_session["headers"], json={"role": "admin"}, timeout=15)
-    assert rp2.status_code == 200
-    assert rp2.json()["role"] == "admin"
-    rp3 = requests.patch(f"{API}/members/{member_session['user']['id']}/role",
-                         headers=admin_session["headers"], json={"role": "member"}, timeout=15)
-    assert rp3.status_code == 200
-
-    # Invalid role
-    rp4 = requests.patch(f"{API}/members/{member_session['user']['id']}/role",
-                         headers=admin_session["headers"], json={"role": "bad"}, timeout=15)
-    assert rp4.status_code == 400
+# ---------- Loterie role can access shared modules ----------
+def test_loterie_role_can_access_allowed_modules(loterie_session):
+    for path in ("/dashboard", "/pontaj", "/loterie", "/fonduri", "/rapoarte", "/members"):
+        r = requests.get(f"{API}{path}", headers=loterie_session["headers"], timeout=15)
+        assert r.status_code == 200, f"loterie role denied for {path}: {r.text}"

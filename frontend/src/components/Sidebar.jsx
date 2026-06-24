@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { ROLE_LABEL } from "@/lib/utils-cartel";
 import {
   LayoutDashboard,
   Clock,
@@ -14,18 +15,18 @@ import {
 } from "lucide-react";
 
 const nav = [
-  { to: "/app", label: "Dashboard", icon: LayoutDashboard, end: true, testid: "nav-dashboard" },
-  { to: "/app/task", label: "Task Săptămânal", icon: ListChecks, testid: "nav-task" },
-  { to: "/app/pontaj", label: "Pontaj", icon: Clock, testid: "nav-pontaj" },
-  { to: "/app/jafuri", label: "Jafuri", icon: Crosshair, testid: "nav-jafuri" },
-  { to: "/app/loterie", label: "Loterie", icon: Ticket, testid: "nav-loterie" },
-  { to: "/app/fonduri", label: "Fonduri", icon: Wallet, testid: "nav-fonduri" },
-  { to: "/app/rapoarte", label: "Rapoarte", icon: FileBarChart, testid: "nav-rapoarte" },
-  { to: "/app/membri", label: "Membri", icon: Users, testid: "nav-membri" },
+  { to: "/app", label: "Dashboard", icon: LayoutDashboard, end: true, testid: "nav-dashboard", mod: "dashboard" },
+  { to: "/app/task", label: "Task Săptămânal", icon: ListChecks, testid: "nav-task", mod: "task" },
+  { to: "/app/pontaj", label: "Pontaj", icon: Clock, testid: "nav-pontaj", mod: "pontaj" },
+  { to: "/app/jafuri", label: "Jafuri", icon: Crosshair, testid: "nav-jafuri", mod: "jafuri" },
+  { to: "/app/loterie", label: "Loterie", icon: Ticket, testid: "nav-loterie", mod: "loterie" },
+  { to: "/app/fonduri", label: "Fonduri", icon: Wallet, testid: "nav-fonduri", mod: "fonduri" },
+  { to: "/app/rapoarte", label: "Rapoarte", icon: FileBarChart, testid: "nav-rapoarte", mod: "rapoarte" },
+  { to: "/app/membri", label: "Membri", icon: Users, testid: "nav-membri", mod: "membri" },
 ];
 
 export default function Sidebar() {
-  const { user, logout } = useAuth();
+  const { user, logout, canAccess } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -44,7 +45,7 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        {nav.map((item) => (
+        {nav.filter((item) => canAccess(item.mod)).map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
@@ -58,7 +59,7 @@ export default function Sidebar() {
               }`
             }
           >
-            <item.icon className="w-4.5 h-4.5" style={{ width: 18, height: 18 }} />
+            <item.icon style={{ width: 18, height: 18 }} />
             {item.label}
           </NavLink>
         ))}
@@ -76,7 +77,7 @@ export default function Sidebar() {
               {user?.username}
             </div>
             <div className="label-mono text-[10px]" data-testid="sidebar-role">
-              {user?.role === "admin" ? "BOSS / ADMIN" : "MEMBRU"}
+              {ROLE_LABEL[user?.role] || user?.role}
             </div>
           </div>
         </div>

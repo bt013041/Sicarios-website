@@ -35,6 +35,12 @@ function ProtectedLayout() {
   );
 }
 
+function Guard({ module, children }) {
+  const { canAccess } = useAuth();
+  if (!canAccess(module)) return <Navigate to="/app" replace />;
+  return children;
+}
+
 function App() {
   return (
     <div className="App dark">
@@ -45,9 +51,9 @@ function App() {
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/app" element={<ProtectedLayout />}>
               <Route index element={<Dashboard />} />
-              <Route path="task" element={<Task />} />
+              <Route path="task" element={<Guard module="task"><Task /></Guard>} />
               <Route path="pontaj" element={<Pontaj />} />
-              <Route path="jafuri" element={<Jafuri />} />
+              <Route path="jafuri" element={<Guard module="jafuri"><Jafuri /></Guard>} />
               <Route path="loterie" element={<Loterie />} />
               <Route path="fonduri" element={<Fonduri />} />
               <Route path="rapoarte" element={<Rapoarte />} />

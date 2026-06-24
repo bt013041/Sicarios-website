@@ -32,7 +32,7 @@ export default function Fonduri() {
         </div>
         <div className="flex gap-6 mt-4 text-sm font-mono text-cartel-textsec">
           <span>Jafuri: <span className="text-cartel-red">{fmtMoney(d.jafuri_total)}</span></span>
-          <span>Loterie (venit): <span className="text-cartel-success">{fmtMoney(d.loterie_revenue)}</span></span>
+          <span>Loterie (premii): <span className="text-cartel-success">{fmtMoney(d.loterie_total)}</span></span>
         </div>
       </div>
 
@@ -40,7 +40,7 @@ export default function Fonduri() {
         <StatCard testid="fond-jafuri" label="Jafuri" value={fmtMoney(d.jafuri_total)} accent="red" icon={Crosshair} />
         <StatCard testid="fond-magazin" label="din Magazin" value={fmtMoney(d.jafuri_magazin)} />
         <StatCard testid="fond-banca" label="din Bancă" value={fmtMoney(d.jafuri_banca)} />
-        <StatCard testid="fond-loterie" label="Loterie" value={fmtMoney(d.loterie_revenue)} accent="gold" icon={Ticket} />
+        <StatCard testid="fond-loterie" label="Loterie (premii)" value={fmtMoney(d.loterie_total)} accent="gold" icon={Ticket} />
       </div>
 
       <div className="bg-cartel-surface border border-cartel-border rounded-sm overflow-x-auto">
@@ -59,7 +59,7 @@ export default function Fonduri() {
               <tr key={w.week} className="border-b border-cartel-border/50 hover:bg-cartel-elevated/50 transition-colors cursor-pointer" onClick={() => setWeek(w.week)}>
                 <td className="p-3 text-sm font-mono text-cartel-text">{w.week}</td>
                 <td className="p-3 text-sm font-mono text-cartel-red">{fmtMoney(w.jafuri_total)}</td>
-                <td className="p-3 text-sm font-mono text-cartel-success">{fmtMoney(w.loterie_revenue)}</td>
+                <td className="p-3 text-sm font-mono text-cartel-success">{fmtMoney(w.loterie_total)}</td>
                 <td className="p-3 text-sm font-mono text-cartel-gold font-bold">{fmtMoney(w.total)}</td>
               </tr>
             ))}

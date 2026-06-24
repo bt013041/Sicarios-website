@@ -39,8 +39,17 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  const ACCESS = {
+    boss: ["dashboard", "task", "pontaj", "jafuri", "loterie", "fonduri", "rapoarte", "membri"],
+    sicarios: ["dashboard", "task", "pontaj", "jafuri", "loterie", "fonduri", "rapoarte", "membri"],
+    loterie: ["dashboard", "pontaj", "loterie", "fonduri", "rapoarte", "membri"],
+  };
+  const role = user?.role;
+  const canAccess = (m) => (ACCESS[role] || []).includes(m);
+  const canGrade = role === "boss";
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refresh: loadMe, isAdmin: user?.role === "admin" }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refresh: loadMe, role, canAccess, canGrade }}>
       {children}
     </AuthContext.Provider>
   );

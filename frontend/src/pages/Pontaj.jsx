@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Trash2, Plus, Clock } from "lucide-react";
 
 export default function Pontaj() {
-  const { user, isAdmin } = useAuth();
+  const { user, role } = useAuth();
   const [week, setWeek] = useState(currentWeek());
   const [rows, setRows] = useState([]);
   const [date, setDate] = useState(todayISO());
@@ -88,7 +88,7 @@ export default function Pontaj() {
                 <td className="p-3 text-sm font-mono text-cartel-gold">{r.hours}</td>
                 <td className="p-3 text-sm text-cartel-textsec">{r.note}</td>
                 <td className="p-3 text-right">
-                  {(isAdmin || r.user_id === user?.id) && (
+                  {(role === "boss" || r.user_id === user?.id) && (
                     <button data-testid={`pontaj-delete-${r.id}`} onClick={() => remove(r.id)} className="text-cartel-textmuted hover:text-cartel-danger transition-colors">
                       <Trash2 size={15} />
                     </button>

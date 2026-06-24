@@ -3,7 +3,7 @@ import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { currentWeek, fmtMoney } from "@/lib/utils-cartel";
 import { PageHeader, WeekNav, StatCard } from "@/components/ui-cartel";
-import { Wallet, Crosshair, Ticket, Clock, Users, ListChecks, Building2, Store } from "lucide-react";
+import { Wallet, Ticket, Users, ListChecks } from "lucide-react";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -22,18 +22,11 @@ export default function Dashboard() {
         <WeekNav week={week} setWeek={setWeek} />
       </PageHeader>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard testid="stat-fonduri" label="Fonduri (săpt.)" value={fmtMoney(f.total)} accent="gold" icon={Wallet} />
-        <StatCard testid="stat-jafuri" label="Total Jafuri" value={fmtMoney(f.jafuri_total)} accent="red" icon={Crosshair} />
-        <StatCard testid="stat-loterie" label="Venit Loterie" value={fmtMoney(f.loterie_revenue)} accent="success" icon={Ticket} />
-        <StatCard testid="stat-ore" label="Ore Pontaj" value={data?.total_hours ?? 0} icon={Clock} />
-      </div>
-
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard testid="stat-magazin" label="Jafuri Magazin" value={fmtMoney(f.jafuri_magazin)} icon={Store} />
-        <StatCard testid="stat-banca" label="Jafuri Bancă" value={fmtMoney(f.jafuri_banca)} icon={Building2} />
+        <StatCard testid="stat-fonduri" label="Fonduri (săpt.)" value={fmtMoney(f.total)} accent="gold" icon={Wallet} />
+        <StatCard testid="stat-loterie" label="Premii Loterie" value={fmtMoney(f.loterie_total)} accent="success" icon={Ticket} />
         <StatCard testid="stat-membri" label="Membri" value={data?.members_count ?? 0} icon={Users} />
-        <StatCard testid="stat-tasks" label="Task-uri" value={`${data?.tasks_done ?? 0}/${data?.tasks_total ?? 0}`} icon={ListChecks} />
+        <StatCard testid="stat-tasks" label="Task-uri" value={`${data?.tasks_done ?? 0}/${data?.tasks_total ?? 0}`} accent="red" icon={ListChecks} />
       </div>
 
       <div className="bg-cartel-surface border border-cartel-border rounded-sm">

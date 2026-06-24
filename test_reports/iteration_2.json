@@ -1,0 +1,32 @@
+{
+  "summary": "Iteration 2 (3-role system boss/sicarios/loterie) fully verified. Backend pytest: 21/21 PASSED covering role assignment (El Jefe=boss, defaults=sicarios), role PATCH permissions (boss-only, invalid=400, non-boss=403), Jafuri (loterie role 403 on GET/POST, participants list persisted), Tasks (loterie 403, done_by tracked - set to toggler's username when done, cleared when undone), Loterie new schema (winner_name+prize only; no tickets_sold/ticket_price/amount_won/revenue; boss+sicarios+loterie all allowed), Fonduri/Dashboard aggregation (loterie_total=sum of prizes; total=jafuri_total+loterie_total; /fonduri/weeks history includes loterie_total). Frontend playwright: boss sees all 8 sidebar items + 4 dashboard cards (Fonduri/Loterie/Membri/Tasks) - no legacy 'Ore Pontaj'/'Total Jafuri'/'Magazin'/'Banca' cards. Membri role dropdown promotes user to loterie; loterie user sidebar hides Jafuri+Task, direct /app/jafuri and /app/task both redirect to /app. Loterie user can add winner via lot-winner-select + lot-prize-input + lot-add-btn (new row appears). On Membri page loterie user sees NO role selects. Jafuri page exposes jaf-type-magazin/banca buttons and jaf-participant-* selectable chips (7 found). Task page shows task-status-* badge with text 'Bifat de El Jefe' after toggle. Role labels render correctly: BOSS / CONDUCERE, SICARIOS MEMBRU, MEMBRU LOTERIE.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_sicarios_api.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py /pontaj DELETE still checks user['role'] != 'admin' (line 318) - obsolete role name from iteration 1. With the new 3-role system this means even 'boss' users can ONLY delete their own pontaj rows (not others') because the role string no longer equals 'admin'. Should be changed to user['role'] != 'boss' to give boss full delete rights. Minor severity since pontaj is per-user, but inconsistent with the new ACL model.",
+    "Loterie POST still accepts negative 'prize' (no Pydantic Field(ge=0) constraint).",
+    "Jafuri POST accepts arbitrary participant usernames without validating they exist in db.users - typos / removed members are silently stored.",
+    "ROLES set is defined inside server.py but ACCESS map is duplicated in frontend AuthContext.jsx - if backend roles change, frontend gating drifts (no shared contract).",
+    "Deprecated @app.on_event('shutdown') still present; migrate to FastAPI lifespan.",
+    "JWT_SECRET committed in backend/.env - rotate for production."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_sicarios_api.py"
+  ],
+  "success_rate": {"backend": "100% (21/21)", "frontend": "100% (all 17 checks)"},
+  "test_credentials": "Demo login - 'El Jefe' = boss (persisted). New username via demo-login = sicarios. To get a loterie user: login any new name, then boss PATCH /api/members/{id}/role role=loterie (or via Membri page role-select-* dropdown).",
+  "seed_data_creation": "Pytest creates and cleans TEST_-prefixed jafuri/loterie/task rows. UI test created persistent demo users (e.g., LotTest<ts>) promoted to loterie role + 1 loterie winner entry (prize=999) that remains in DB.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend tests at /app/backend/tests/test_sicarios_api.py rewritten for boss/sicarios/loterie roles + new loterie schema (winner_name+prize). Run with: export $(grep -v '^#' /app/frontend/.env | xargs) && pytest /app/backend/tests/. The /api/pontaj DELETE check on line 318 of server.py still references the old 'admin' role - flagged as code review item; tests don't currently exercise cross-user pontaj deletes since iteration 2 didn't request that flow, but iteration 1 did and that test was removed.",
+  "rca of the issue": "No bugs found in iteration 2 deliverables. Only pre-existing code-quality note: /api/pontaj DELETE still gates on role=='admin' (stale string) - boss cannot delete other users' pontaj rows; minor."
+}

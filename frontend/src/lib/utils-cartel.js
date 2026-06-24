@@ -31,3 +31,15 @@ export function todayISO() {
 export function fmtMoney(n) {
   return "$" + Number(n || 0).toLocaleString("en-US");
 }
+
+export const ROLE_LABEL = {
+  boss: "BOSS / CONDUCERE",
+  sicarios: "SICARIOS MEMBRU",
+  loterie: "MEMBRU LOTERIE",
+};
+
+export const ROLE_OPTIONS = [
+  { value: "boss", label: "Boss / Conducere" },
+  { value: "sicarios", label: "Sicarios Membru" },
+  { value: "loterie", label: "Membru Loterie" },
+];

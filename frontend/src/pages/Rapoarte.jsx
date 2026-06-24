@@ -57,7 +57,7 @@ export default function Rapoarte() {
       <div className="bg-cartel-surface border border-cartel-border rounded-sm mt-6 p-6 grid sm:grid-cols-2 lg:grid-cols-4 gap-6" data-testid="rapoarte-summary">
         <div><div className="label-mono mb-1">Total jafuri</div><div className="font-heading text-3xl text-cartel-red">{fmtMoney(f.jafuri_total)}</div></div>
         <div><div className="label-mono mb-1">Nr. jafuri</div><div className="font-heading text-3xl text-cartel-text">{f.jafuri_count || 0}</div></div>
-        <div><div className="label-mono mb-1">Venit loterie</div><div className="font-heading text-3xl text-cartel-success">{fmtMoney(f.loterie_revenue)}</div></div>
+        <div><div className="label-mono mb-1">Premii loterie</div><div className="font-heading text-3xl text-cartel-success">{fmtMoney(f.loterie_total)}</div></div>
         <div><div className="label-mono mb-1">Total fonduri</div><div className="font-heading text-3xl text-cartel-gold">{fmtMoney(f.total)}</div></div>
       </div>
     </div>

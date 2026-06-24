@@ -74,8 +74,17 @@ class User(BaseModel):
     discord_id: str
     username: str
     avatar_url: str = ""
-    role: str = "member"  # member | admin
+    role: str = "sicarios"  # boss | sicarios | loterie
     created_at: str = Field(default_factory=now_iso)
+
+
+ROLES = {"boss", "sicarios", "loterie"}
+# Module access per role
+ACCESS = {
+    "boss": {"dashboard", "task", "pontaj", "jafuri", "loterie", "fonduri", "rapoarte", "membri"},
+    "sicarios": {"dashboard", "task", "pontaj", "jafuri", "loterie", "fonduri", "rapoarte", "membri"},
+    "loterie": {"dashboard", "pontaj", "loterie", "fonduri", "rapoarte", "membri"},
+}
 
 
 class DemoLogin(BaseModel):
@@ -98,14 +107,13 @@ class JafCreate(BaseModel):
     location: str
     details: Optional[str] = ""
     date: str
+    participants: List[str] = []
 
 
 class LoterieCreate(BaseModel):
     week: Optional[str] = None
     winner_name: str
-    amount_won: float
-    tickets_sold: int
-    ticket_price: float = 0
+    prize: float
     details: Optional[str] = ""
     date: Optional[str] = None
 
@@ -130,9 +138,17 @@ async def get_current_user(creds: HTTPAuthorizationCredentials = Depends(securit
 
 
 async def require_admin(user: dict = Depends(get_current_user)) -> dict:
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Doar Boss/Admin are acces")
+    if user.get("role") != "boss":
+        raise HTTPException(status_code=403, detail="Doar Boss/Conducerea are acces")
     return user
+
+
+def require_roles(*roles):
+    async def dep(user: dict = Depends(get_current_user)) -> dict:
+        if user.get("role") not in roles:
+            raise HTTPException(status_code=403, detail="Acces interzis pentru rolul tău")
+        return user
+    return dep
 
 
 async def upsert_discord_user(discord_id: str, username: str, avatar_url: str) -> dict:
@@ -144,7 +160,7 @@ async def upsert_discord_user(discord_id: str, username: str, avatar_url: str) -
         )
         return clean(await db.users.find_one({"discord_id": discord_id}))
     count = await db.users.count_documents({})
-    role = "admin" if (count == 0 or discord_id in BOSS_DISCORD_IDS) else "member"
+    role = "boss" if (count == 0 or discord_id in BOSS_DISCORD_IDS) else "sicarios"
     user = User(discord_id=discord_id, username=username, avatar_url=avatar_url, role=role)
     await db.users.insert_one(user.model_dump())
     return user.model_dump()
@@ -254,7 +270,7 @@ async def get_members(user: dict = Depends(get_current_user)):
 
 @api_router.patch("/members/{member_id}/role")
 async def update_role(member_id: str, body: RoleUpdate, admin: dict = Depends(require_admin)):
-    if body.role not in ("member", "admin"):
+    if body.role not in ROLES:
         raise HTTPException(status_code=400, detail="Rol invalid")
     res = await db.users.update_one({"id": member_id}, {"$set": {"role": body.role}})
     if res.matched_count == 0:
@@ -307,7 +323,7 @@ async def delete_pontaj(item_id: str, user: dict = Depends(get_current_user)):
 
 # ---------- Jafuri ----------
 @api_router.post("/jafuri")
-async def create_jaf(body: JafCreate, user: dict = Depends(get_current_user)):
+async def create_jaf(body: JafCreate, user: dict = Depends(require_roles("boss", "sicarios"))):
     if body.type not in ("magazin", "banca"):
         raise HTTPException(status_code=400, detail="Tip invalid")
     d = parse_date(body.date)
@@ -320,6 +336,7 @@ async def create_jaf(body: JafCreate, user: dict = Depends(get_current_user)):
         "amount": body.amount,
         "location": body.location,
         "details": body.details or "",
+        "participants": body.participants or [],
         "date": d.isoformat(),
         "week": iso_week_str(d),
         "created_at": now_iso(),
@@ -329,39 +346,36 @@ async def create_jaf(body: JafCreate, user: dict = Depends(get_current_user)):
 
 
 @api_router.get("/jafuri")
-async def list_jafuri(week: Optional[str] = None, user: dict = Depends(get_current_user)):
+async def list_jafuri(week: Optional[str] = None, user: dict = Depends(require_roles("boss", "sicarios"))):
     q = {"week": week} if week else {}
     rows = await db.jafuri.find(q).sort("date", -1).to_list(2000)
     return [clean(r) for r in rows]
 
 
 @api_router.delete("/jafuri/{item_id}")
-async def delete_jaf(item_id: str, user: dict = Depends(get_current_user)):
+async def delete_jaf(item_id: str, user: dict = Depends(require_roles("boss", "sicarios"))):
     item = await db.jafuri.find_one({"id": item_id})
     if not item:
         raise HTTPException(status_code=404, detail="Inexistent")
-    if user["role"] != "admin" and item["user_id"] != user["id"]:
+    if user["role"] != "boss" and item["user_id"] != user["id"]:
         raise HTTPException(status_code=403, detail="Nu ai voie")
     await db.jafuri.delete_one({"id": item_id})
     return {"ok": True}
 
 
-# ---------- Loterie (admin only create) ----------
+# ---------- Loterie ----------
 @api_router.post("/loterie")
-async def create_loterie(body: LoterieCreate, admin: dict = Depends(require_admin)):
+async def create_loterie(body: LoterieCreate, user: dict = Depends(require_roles("boss", "sicarios", "loterie"))):
     d = parse_date(body.date) if body.date else datetime.now(timezone.utc).date()
     week = body.week or iso_week_str(d)
     doc = {
         "id": str(uuid.uuid4()),
         "week": week,
         "winner_name": body.winner_name,
-        "amount_won": body.amount_won,
-        "tickets_sold": body.tickets_sold,
-        "ticket_price": body.ticket_price,
-        "revenue": body.tickets_sold * body.ticket_price,
+        "prize": body.prize,
         "details": body.details or "",
         "date": d.isoformat(),
-        "created_by": admin["username"],
+        "created_by": user["username"],
         "created_at": now_iso(),
     }
     await db.loterie.insert_one(doc)
@@ -369,28 +383,29 @@ async def create_loterie(body: LoterieCreate, admin: dict = Depends(require_admi
 
 
 @api_router.get("/loterie")
-async def list_loterie(week: Optional[str] = None, user: dict = Depends(get_current_user)):
+async def list_loterie(week: Optional[str] = None, user: dict = Depends(require_roles("boss", "sicarios", "loterie"))):
     q = {"week": week} if week else {}
     rows = await db.loterie.find(q).sort("date", -1).to_list(2000)
     return [clean(r) for r in rows]
 
 
 @api_router.delete("/loterie/{item_id}")
-async def delete_loterie(item_id: str, admin: dict = Depends(require_admin)):
+async def delete_loterie(item_id: str, user: dict = Depends(require_roles("boss", "sicarios", "loterie"))):
     await db.loterie.delete_one({"id": item_id})
     return {"ok": True}
 
 
 # ---------- Tasks (weekly) ----------
 @api_router.post("/tasks")
-async def create_task(body: TaskCreate, admin: dict = Depends(require_admin)):
+async def create_task(body: TaskCreate, user: dict = Depends(require_roles("boss", "sicarios"))):
     doc = {
         "id": str(uuid.uuid4()),
         "title": body.title,
         "description": body.description or "",
         "week": body.week or current_week(),
         "done": False,
-        "created_by": admin["username"],
+        "done_by": "",
+        "created_by": user["username"],
         "created_at": now_iso(),
     }
     await db.tasks.insert_one(doc)
@@ -398,23 +413,27 @@ async def create_task(body: TaskCreate, admin: dict = Depends(require_admin)):
 
 
 @api_router.get("/tasks")
-async def list_tasks(week: Optional[str] = None, user: dict = Depends(get_current_user)):
+async def list_tasks(week: Optional[str] = None, user: dict = Depends(require_roles("boss", "sicarios"))):
     q = {"week": week} if week else {}
     rows = await db.tasks.find(q).sort("created_at", -1).to_list(2000)
     return [clean(r) for r in rows]
 
 
 @api_router.patch("/tasks/{task_id}")
-async def toggle_task(task_id: str, user: dict = Depends(get_current_user)):
+async def toggle_task(task_id: str, user: dict = Depends(require_roles("boss", "sicarios"))):
     item = await db.tasks.find_one({"id": task_id})
     if not item:
         raise HTTPException(status_code=404, detail="Inexistent")
-    await db.tasks.update_one({"id": task_id}, {"$set": {"done": not item.get("done", False)}})
+    new_done = not item.get("done", False)
+    await db.tasks.update_one(
+        {"id": task_id},
+        {"$set": {"done": new_done, "done_by": user["username"] if new_done else ""}},
+    )
     return clean(await db.tasks.find_one({"id": task_id}))
 
 
 @api_router.delete("/tasks/{task_id}")
-async def delete_task(task_id: str, admin: dict = Depends(require_admin)):
+async def delete_task(task_id: str, user: dict = Depends(require_roles("boss", "sicarios"))):
     await db.tasks.delete_one({"id": task_id})
     return {"ok": True}
 
@@ -430,12 +449,9 @@ async def week_funds(week: str) -> dict:
     by_type = {x["_id"]: x["total"] for x in jaf}
     lot = await db.loterie.aggregate([
         {"$match": {"week": week}},
-        {"$group": {"_id": None, "revenue": {"$sum": "$revenue"}, "won": {"$sum": "$amount_won"},
-                    "tickets": {"$sum": "$tickets_sold"}, "count": {"$sum": 1}}},
+        {"$group": {"_id": None, "prizes": {"$sum": "$prize"}, "count": {"$sum": 1}}},
     ]).to_list(1)
-    lot_revenue = lot[0]["revenue"] if lot else 0
-    lot_won = lot[0]["won"] if lot else 0
-    lot_tickets = lot[0]["tickets"] if lot else 0
+    lot_total = lot[0]["prizes"] if lot else 0
     lot_count = lot[0]["count"] if lot else 0
     return {
         "week": week,
@@ -443,11 +459,9 @@ async def week_funds(week: str) -> dict:
         "jafuri_count": jaf_count,
         "jafuri_magazin": by_type.get("magazin", 0),
         "jafuri_banca": by_type.get("banca", 0),
-        "loterie_revenue": lot_revenue,
-        "loterie_won": lot_won,
-        "loterie_tickets": lot_tickets,
+        "loterie_total": lot_total,
         "loterie_count": lot_count,
-        "total": jaf_total + lot_revenue,
+        "total": jaf_total + lot_total,
     }
 
 
