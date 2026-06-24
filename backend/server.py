@@ -315,7 +315,7 @@ async def delete_pontaj(item_id: str, user: dict = Depends(get_current_user)):
     item = await db.pontaj.find_one({"id": item_id})
     if not item:
         raise HTTPException(status_code=404, detail="Inexistent")
-    if user["role"] != "admin" and item["user_id"] != user["id"]:
+    if user["role"] != "boss" and item["user_id"] != user["id"]:
         raise HTTPException(status_code=403, detail="Nu ai voie")
     await db.pontaj.delete_one({"id": item_id})
     return {"ok": True}
@@ -365,7 +365,7 @@ async def delete_jaf(item_id: str, user: dict = Depends(require_roles("boss", "s
 
 # ---------- Loterie ----------
 @api_router.post("/loterie")
-async def create_loterie(body: LoterieCreate, user: dict = Depends(require_roles("boss", "sicarios", "loterie"))):
+async def create_loterie(body: LoterieCreate, user: dict = Depends(require_roles("boss", "sicarios"))):
     d = parse_date(body.date) if body.date else datetime.now(timezone.utc).date()
     week = body.week or iso_week_str(d)
     doc = {
@@ -390,7 +390,7 @@ async def list_loterie(week: Optional[str] = None, user: dict = Depends(require_
 
 
 @api_router.delete("/loterie/{item_id}")
-async def delete_loterie(item_id: str, user: dict = Depends(require_roles("boss", "sicarios", "loterie"))):
+async def delete_loterie(item_id: str, user: dict = Depends(require_roles("boss", "sicarios"))):
     await db.loterie.delete_one({"id": item_id})
     return {"ok": True}
 

@@ -6,7 +6,8 @@ import { PageHeader, WeekNav, StatCard } from "@/components/ui-cartel";
 import { Wallet, Ticket, Users, ListChecks } from "lucide-react";
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const isLoterie = role === "loterie";
   const [week, setWeek] = useState(currentWeek());
   const [data, setData] = useState(null);
 
@@ -26,9 +27,12 @@ export default function Dashboard() {
         <StatCard testid="stat-fonduri" label="Fonduri (săpt.)" value={fmtMoney(f.total)} accent="gold" icon={Wallet} />
         <StatCard testid="stat-loterie" label="Premii Loterie" value={fmtMoney(f.loterie_total)} accent="success" icon={Ticket} />
         <StatCard testid="stat-membri" label="Membri" value={data?.members_count ?? 0} icon={Users} />
-        <StatCard testid="stat-tasks" label="Task-uri" value={`${data?.tasks_done ?? 0}/${data?.tasks_total ?? 0}`} accent="red" icon={ListChecks} />
+        {!isLoterie && (
+          <StatCard testid="stat-tasks" label="Task-uri" value={`${data?.tasks_done ?? 0}/${data?.tasks_total ?? 0}`} accent="red" icon={ListChecks} />
+        )}
       </div>
 
+      {!isLoterie && (
       <div className="bg-cartel-surface border border-cartel-border rounded-sm">
         <div className="border-b border-cartel-border p-4 bg-cartel-elevated">
           <span className="label-mono">Ultimele Jafuri</span>
@@ -54,6 +58,7 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }

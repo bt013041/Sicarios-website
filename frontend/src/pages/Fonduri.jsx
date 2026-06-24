@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import { currentWeek, fmtMoney } from "@/lib/utils-cartel";
 import { PageHeader, WeekNav, StatCard } from "@/components/ui-cartel";
 import { Wallet, Crosshair, Ticket } from "lucide-react";
 
 export default function Fonduri() {
+  const { role } = useAuth();
+  const isLoterie = role === "loterie";
   const [week, setWeek] = useState(currentWeek());
   const [data, setData] = useState(null);
   const [weeks, setWeeks] = useState([]);
@@ -18,10 +21,11 @@ export default function Fonduri() {
   }, []);
 
   const d = data || {};
+  const cols = isLoterie ? ["Săptămână", "Loterie", "Total"] : ["Săptămână", "Jafuri", "Loterie", "Total"];
 
   return (
     <div className="animate-fade-up">
-      <PageHeader title="Fonduri" subtitle="Total săptămânal din jafuri + loterie">
+      <PageHeader title="Fonduri" subtitle="Total săptămânal">
         <WeekNav week={week} setWeek={setWeek} />
       </PageHeader>
 
@@ -31,15 +35,15 @@ export default function Fonduri() {
           {fmtMoney(d.total)}
         </div>
         <div className="flex gap-6 mt-4 text-sm font-mono text-cartel-textsec">
-          <span>Jafuri: <span className="text-cartel-red">{fmtMoney(d.jafuri_total)}</span></span>
+          {!isLoterie && <span>Jafuri: <span className="text-cartel-red">{fmtMoney(d.jafuri_total)}</span></span>}
           <span>Loterie (premii): <span className="text-cartel-success">{fmtMoney(d.loterie_total)}</span></span>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard testid="fond-jafuri" label="Jafuri" value={fmtMoney(d.jafuri_total)} accent="red" icon={Crosshair} />
-        <StatCard testid="fond-magazin" label="din Magazin" value={fmtMoney(d.jafuri_magazin)} />
-        <StatCard testid="fond-banca" label="din Bancă" value={fmtMoney(d.jafuri_banca)} />
+        {!isLoterie && <StatCard testid="fond-jafuri" label="Jafuri" value={fmtMoney(d.jafuri_total)} accent="red" icon={Crosshair} />}
+        {!isLoterie && <StatCard testid="fond-magazin" label="din Magazin" value={fmtMoney(d.jafuri_magazin)} />}
+        {!isLoterie && <StatCard testid="fond-banca" label="din Bancă" value={fmtMoney(d.jafuri_banca)} />}
         <StatCard testid="fond-loterie" label="Loterie (premii)" value={fmtMoney(d.loterie_total)} accent="gold" icon={Ticket} />
       </div>
 
@@ -48,17 +52,17 @@ export default function Fonduri() {
         <table className="w-full text-left">
           <thead>
             <tr>
-              {["Săptămână", "Jafuri", "Loterie", "Total"].map((h) => (
+              {cols.map((h) => (
                 <th key={h} className="bg-cartel-elevated text-cartel-textsec font-mono text-xs uppercase tracking-wider p-3 border-y border-cartel-border">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody data-testid="fonduri-history">
-            {weeks.length === 0 && <tr><td colSpan={4} className="p-4 text-cartel-textmuted text-sm">Niciun fond înregistrat.</td></tr>}
+            {weeks.length === 0 && <tr><td colSpan={cols.length} className="p-4 text-cartel-textmuted text-sm">Niciun fond înregistrat.</td></tr>}
             {weeks.map((w) => (
               <tr key={w.week} className="border-b border-cartel-border/50 hover:bg-cartel-elevated/50 transition-colors cursor-pointer" onClick={() => setWeek(w.week)}>
                 <td className="p-3 text-sm font-mono text-cartel-text">{w.week}</td>
-                <td className="p-3 text-sm font-mono text-cartel-red">{fmtMoney(w.jafuri_total)}</td>
+                {!isLoterie && <td className="p-3 text-sm font-mono text-cartel-red">{fmtMoney(w.jafuri_total)}</td>}
                 <td className="p-3 text-sm font-mono text-cartel-success">{fmtMoney(w.loterie_total)}</td>
                 <td className="p-3 text-sm font-mono text-cartel-gold font-bold">{fmtMoney(w.total)}</td>
               </tr>

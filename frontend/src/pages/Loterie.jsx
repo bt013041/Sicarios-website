@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import { currentWeek, todayISO, fmtMoney } from "@/lib/utils-cartel";
 import { PageHeader, WeekNav, StatCard } from "@/components/ui-cartel";
 import { toast } from "sonner";
-import { Trash2, Plus, Trophy, Users } from "lucide-react";
+import { Trash2, Plus, Trophy, Users, Lock } from "lucide-react";
 
 export default function Loterie() {
+  const { role } = useAuth();
+  const canEdit = role !== "loterie";
   const [week, setWeek] = useState(currentWeek());
   const [rows, setRows] = useState([]);
   const [members, setMembers] = useState([]);
@@ -51,6 +54,7 @@ export default function Loterie() {
         <StatCard testid="lot-total" label="Total premii" value={fmtMoney(totalPrize)} accent="success" icon={Trophy} />
       </div>
 
+      {canEdit ? (
       <form onSubmit={add} className="bg-cartel-surface border border-cartel-gold/30 rounded-sm p-5 mb-6 grid sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end" data-testid="lot-form">
         <div>
           <label className="label-mono mb-2 block">Câștigător</label>
@@ -73,6 +77,11 @@ export default function Loterie() {
           <Plus size={18} /> Adaugă câștigător
         </button>
       </form>
+      ) : (
+        <div className="bg-cartel-surface border border-cartel-border rounded-sm p-4 mb-6 flex items-center gap-2 text-cartel-textsec text-sm" data-testid="lot-readonly">
+          <Lock size={15} /> Ai acces doar de vizualizare la Loterie.
+        </div>
+      )}
 
       <div className="space-y-3" data-testid="lot-list">
         {rows.length === 0 && <p className="text-cartel-textmuted text-sm">Niciun câștigător înregistrat.</p>}
@@ -90,9 +99,11 @@ export default function Loterie() {
             {l.details && <div className="text-cartel-textsec text-sm flex-1 min-w-[120px]">{l.details}</div>}
             <div className="ml-auto flex items-center gap-3">
               <span className="text-xs font-mono text-cartel-textmuted">{l.date}</span>
-              <button data-testid={`lot-delete-${l.id}`} onClick={() => remove(l.id)} className="text-cartel-textmuted hover:text-cartel-danger transition-colors">
-                <Trash2 size={16} />
-              </button>
+              {canEdit && (
+                <button data-testid={`lot-delete-${l.id}`} onClick={() => remove(l.id)} className="text-cartel-textmuted hover:text-cartel-danger transition-colors">
+                  <Trash2 size={16} />
+                </button>
+              )}
             </div>
           </div>
         ))}
