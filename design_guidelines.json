@@ -1,0 +1,122 @@
+{
+  "theme": "dark",
+  "archetype": "Archetype 5 (Luxury) + Archetype 2 (Performance Pro) Hybrid",
+  "vibe": "Sicarios Cartel, Tactical, Underground Bunker, Elite Crime Syndicate, GTA-RP",
+  "colors": {
+    "primary": "#DC2626",
+    "primary_hover": "#B91C1C",
+    "secondary": "#D4AF37",
+    "secondary_hover": "#B89A2E",
+    "background": "#050505",
+    "surface": "#121212",
+    "surface_elevated": "#1A1A1A",
+    "border": "#262626",
+    "border_light": "#404040",
+    "text_primary": "#F3F4F6",
+    "text_secondary": "#A1A1AA",
+    "text_muted": "#71717A",
+    "discord": "#5865F2",
+    "success": "#22C55E",
+    "danger": "#EF4444"
+  },
+  "typography": {
+    "headings_font": "Bebas Neue",
+    "body_font": "IBM Plex Sans",
+    "mono_font": "JetBrains Mono",
+    "rules": {
+      "headings": "uppercase, tracking-wide, leading-none",
+      "body": "leading-relaxed, tracking-normal",
+      "labels": "uppercase, text-xs, tracking-[0.2em] font-mono text-text_secondary"
+    }
+  },
+  "layout": {
+    "strategy": "Control Room Grid (Dense, technical, scanable) for the Dashboard. Tetris Grid (High visual impact, asymmetrical) for the Login/Landing page.",
+    "spacing": "Tight gaps (gap-4/gap-6) inside dashboard widgets. Generous padding (p-8/p-12) for outer layout containers.",
+    "border_radius": "rounded-sm (Max 2px to 4px) - keeping it sharp, tactical, and aggressive. Cardless look preferred for data grids."
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-primary text-white uppercase font-headings text-xl px-6 py-2 rounded-sm hover:bg-primary_hover transition-colors shadow-[0_0_15px_rgba(220,38,38,0.5)]",
+      "discord": "bg-[#5865F2] text-white uppercase font-headings text-xl px-6 py-3 rounded-sm flex items-center gap-3 hover:bg-[#4752C4] transition-colors",
+      "ghost": "bg-transparent border border-border text-text_primary hover:bg-surface_elevated transition-colors"
+    },
+    "cards": {
+      "style": "bg-surface border border-border rounded-sm overflow-hidden",
+      "header": "border-b border-border p-4 bg-surface_elevated",
+      "body": "p-4 md:p-6"
+    },
+    "forms": {
+      "inputs": "bg-[#0A0A0A] border border-border rounded-sm p-3 text-text_primary focus:border-primary focus:ring-1 focus:ring-primary transition-all w-full",
+      "labels": "text-xs uppercase tracking-widest text-text_secondary mb-2 block font-mono"
+    },
+    "tables": {
+      "style": "w-full text-left border-collapse",
+      "header": "bg-surface_elevated text-text_secondary font-mono text-xs uppercase tracking-wider p-3 border-y border-border",
+      "row": "border-b border-border/50 hover:bg-surface_elevated/50 transition-colors",
+      "cell": "p-3 align-middle text-sm text-text_primary"
+    }
+  },
+  "pages_and_features": {
+    "login_page": {
+      "layout": "Full-screen hero with background image overlay",
+      "elements": [
+        "Dark cinematic background image (Cartel/Money theme)",
+        "Heavy dark overlay (bg-black/80 to bg-black/60 gradient) so text is readable",
+        "Massive Typography (SICARIOS CARTEL) in Bebas Neue",
+        "Centered Discord Login Button"
+      ]
+    },
+    "dashboard_layout": {
+      "structure": "Sidebar + Main Content Area. Dark tactical UI.",
+      "sidebar": "Fixed width, contains user profile info (Discord avatar), navigation links.",
+      "navigation": [
+        "Dashboard (Overview)",
+        "Pontaj (Attendance)",
+        "Jafuri (Robberies)",
+        "Loterie (Lottery)",
+        "Fonduri (Funds)",
+        "Rapoarte (Reports)"
+      ]
+    },
+    "pontaj": {
+      "description": "Log daily hours. Time tracking table.",
+      "ui_elements": "Form to input hours. Data table listing member, date, hours. Mono-spaced fonts for numbers."
+    },
+    "jafuri": {
+      "description": "Robbery logs (Store/Bank, Amount, Location, Details).",
+      "ui_elements": "Submission form. Grid of 'recent hits' using a gritty card layout. Highlight amounts in 'success' green or primary red."
+    },
+    "loterie": {
+      "description": "Lottery winner, amount won, tickets sold.",
+      "ui_elements": "Use secondary color (Cartel Gold) heavily here. Big stat numbers for 'Jackpot' and 'Tickets Sold'."
+    },
+    "fonduri": {
+      "description": "Weekly total funds from robberies and lottery.",
+      "ui_elements": "Aggregated big metrics. Control room style dashboard widgets. High visual hierarchy for total amount."
+    },
+    "rapoarte": {
+      "description": "Reports and administrative view.",
+      "ui_elements": "Dense table view with filters. Strict grid structure."
+    }
+  },
+  "media_urls": {
+    "login_background": {
+      "url": "https://images.pexels.com/photos/22264651/pexels-photo-22264651.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "A man counting money with a gun on the desk in a vintage, mafia-themed setting. Used for the initial Discord Login landing page with heavy dark overlay."
+    },
+    "jafuri_header": {
+      "url": "https://images.pexels.com/photos/19920920/pexels-photo-19920920.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Vintage safety deposit boxes. Can be used as a header graphic or card background for the Jafuri (Robberies) section."
+    },
+    "loterie_header": {
+      "url": "https://images.unsplash.com/photo-1518895312237-a9e23508077d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzB8MHwxfHNlYXJjaHwyfHxjYXNpbm8lMjBkYXJrJTIwcm91bGV0dGV8ZW58MHx8fHwxNzgyMzEwMDg5fDA&ixlib=rb-4.1.0&q=85",
+      "description": "Dark casino slot machine. Perfect for the Loterie header or background graphic."
+    }
+  },
+  "accessibility_and_testing": {
+    "data_testid": "MANDATORY. Every button, input, tab, or key element must have a data-testid. E.g., 'discord-login-btn', 'submit-pontaj-btn'.",
+    "contrast": "Ensure minimum 4.5:1 ratio. Text on dark backgrounds must be bright enough. Use drop shadows on text if placed directly over images without solid overlays.",
+    "hover_states": "Must be visibly distinct. Red buttons get brighter, borders glow."
+  },
+  "language": "Romanian (RO) strictly for all UI text, labels, and placeholders."
+}
