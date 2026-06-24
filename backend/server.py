@@ -29,6 +29,7 @@ DISCORD_CLIENT_SECRET = os.environ.get('DISCORD_CLIENT_SECRET', '')
 DISCORD_REDIRECT_URI = os.environ.get('DISCORD_REDIRECT_URI', '')
 FRONTEND_URL = os.environ.get('FRONTEND_URL', '')
 BOSS_DISCORD_IDS = [x.strip() for x in os.environ.get('BOSS_DISCORD_IDS', '').split(',') if x.strip()]
+DISCORD_GUILD_ID = os.environ.get('DISCORD_GUILD_ID', '').strip()
 DISCORD_API = "https://discord.com/api"
 
 app = FastAPI()
@@ -205,6 +206,14 @@ async def discord_callback(code: str):
         if user_res.status_code != 200:
             return RedirectResponse(f"{FRONTEND_URL}/?error=user_fetch")
         d = user_res.json()
+        if DISCORD_GUILD_ID:
+            guilds_res = await http.get(
+                f"{DISCORD_API}/users/@me/guilds",
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            guild_ids = [g["id"] for g in guilds_res.json()] if guilds_res.status_code == 200 else []
+            if DISCORD_GUILD_ID not in guild_ids:
+                return RedirectResponse(f"{FRONTEND_URL}/?error=not_member")
     discord_id = d["id"]
     username = d.get("global_name") or d.get("username")
     if d.get("avatar"):

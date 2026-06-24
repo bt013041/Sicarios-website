@@ -1,9 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { Skull, Loader2 } from "lucide-react";
+
+const ERRORS = {
+  not_member: "Nu ești membru al serverului Discord. Acces refuzat.",
+  discord_not_configured: "Discord OAuth nu este configurat.",
+  token_exchange: "Eroare la autentificarea cu Discord.",
+  user_fetch: "Nu am putut prelua profilul Discord.",
+};
 
 const LOGIN_BG =
   "https://images.pexels.com/photos/22264651/pexels-photo-22264651.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940";
@@ -13,6 +20,14 @@ export default function Login() {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const err = new URLSearchParams(window.location.search).get("error");
+    if (err) {
+      toast.error(ERRORS[err] || "Eroare de autentificare");
+      window.history.replaceState({}, "", "/");
+    }
+  }, []);
 
   const handleDemo = async (e) => {
     e.preventDefault();

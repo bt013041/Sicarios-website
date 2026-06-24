@@ -1,0 +1,31 @@
+{
+  "summary": "Full backend + frontend testing for Sicarios Cartel app. 17/17 pytest backend tests passed covering auth/demo-login, /api/auth/me, pontaj CRUD + cross-user delete permissions, jafuri (invalid type rejection, CRUD), loterie (admin-only create/delete, member 403, revenue=tickets*price), tasks (admin-only create/delete, any-user toggle), fonduri aggregation + /fonduri/weeks, dashboard, rapoarte, members list + role patch (admin only, invalid role validation), discord URL endpoint. UI playwright flow covered: login page render, demo login as 'El Jefe' (admin), sidebar role display, week prev/next/current navigation (label updates correctly 2026-W26 <-> 2026-W25), navigate to all 8 modules (Dashboard/Task/Pontaj/Jafuri/Loterie/Fonduri/Rapoarte/Membri) via sidebar testids, pontaj add via form visible in list, jafuri add (banca) visible in list, admin sees loterie form, logout returns to login, new demo user gets MEMBRU role, member on Loterie sees lock message 'Doar Boss/Admin poate adăuga extrageri.' with no lot-form rendered. All passed.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Fonduri", "issues": ["Recharts container emits 'width(-1) and height(-1)' console warnings on initial mount; chart renders fine after layout settles but consider adding min-width/min-height to ResponsiveContainer or wrapping div."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_sicarios_api.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "(Optional polish) Fix Recharts ResponsiveContainer warnings on Fonduri page by ensuring parent has explicit min-height/width."
+  ],
+  "critical_code_review_comments": [
+    "server.py uses deprecated @app.on_event('shutdown'); migrate to FastAPI lifespan handlers (non-blocking but warning at startup).",
+    "discord_callback fetches guilds without try/except around guilds_res.json() if non-200 status; current code guards with status check but no exception handling for httpx errors (rare path, OAuth-only).",
+    "upsert_discord_user races on 'first user = admin' under concurrent first-time logins (count_documents check then insert is not atomic). Acceptable for this app but worth noting.",
+    "No rate-limiting on /auth/demo-login - anyone can create unlimited demo users. Fine for internal tool, document if going public.",
+    "JWT_SECRET committed in backend/.env. Should be rotated for production.",
+    "Loterie POST accepts negative amount_won / tickets_sold / ticket_price (no Pydantic >=0 validators). Consider Field(ge=0)."
+  ],
+  "updated_files": ["/app/backend/tests/test_sicarios_api.py"],
+  "success_rate": {"backend": "100% (17/17)", "frontend": "100% (14/14 flow steps)"},
+  "test_credentials": "Admin: demo-login username 'El Jefe' (first registered user, persists in DB). Member: any new username creates a member.",
+  "seed_data_creation": "Each pytest run creates and cleans up its own TEST_ prefixed pontaj/jafuri/loterie/task. UI test created two real demo users (El Jefe already existed; Sicario_UI_<ts> newly created member) plus a few pontaj/jafuri rows that remain in DB.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend tests live in /app/backend/tests/test_sicarios_api.py and rely on 'El Jefe' being the first/admin user. If DB is reset, the first call to demo-login with 'El Jefe' will become admin again automatically. JUnit XML at /app/test_reports/pytest/pytest_results.xml.",
+  "rca of the issue": "No bugs found. All requested features working end-to-end."
+}
