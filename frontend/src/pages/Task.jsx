@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import { Check, Trash2, Plus, ChevronDown, ChevronUp, Users } from "lucide-react";
 
 export default function Task() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const canManage = role === "boss" || role === "sicarios";
   const [week, setWeek] = useState(currentWeek());
   const [tasks, setTasks] = useState([]);
   const [title, setTitle] = useState("");
@@ -48,6 +49,7 @@ export default function Task() {
         <WeekNav week={week} setWeek={setWeek} />
       </PageHeader>
 
+      {canManage && (
       <form onSubmit={add} className="bg-cartel-surface border border-cartel-border rounded-sm p-5 mb-6 grid sm:grid-cols-[1fr_1fr_auto] gap-3 items-end" data-testid="task-form">
         <div>
           <label className="label-mono mb-2 block">Titlu task</label>
@@ -61,6 +63,7 @@ export default function Task() {
           <Plus size={18} /> Adaugă
         </button>
       </form>
+      )}
 
       <div className="space-y-2" data-testid="task-list">
         {tasks.length === 0 && <p className="text-cartel-textmuted text-sm">Niciun task pentru această săptămână.</p>}
@@ -90,9 +93,11 @@ export default function Task() {
                   <Users size={12} /> {completed.length} au bifat
                   {completed.length > 0 && (isOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
                 </button>
-                <button data-testid={`task-delete-${t.id}`} onClick={() => remove(t.id)} className="text-cartel-textmuted hover:text-cartel-danger transition-colors shrink-0">
-                  <Trash2 size={16} />
-                </button>
+                {canManage && (
+                  <button data-testid={`task-delete-${t.id}`} onClick={() => remove(t.id)} className="text-cartel-textmuted hover:text-cartel-danger transition-colors shrink-0">
+                    <Trash2 size={16} />
+                  </button>
+                )}
               </div>
               {isOpen && completed.length > 0 && (
                 <div className="border-t border-cartel-border/60 bg-cartel-elevated/40 p-4" data-testid={`task-completed-list-${t.id}`}>

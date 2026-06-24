@@ -83,7 +83,7 @@ ROLES = {"boss", "sicarios", "asociat", "loterie"}
 ACCESS = {
     "boss": {"dashboard", "task", "pontaj", "jafuri", "loterie", "fonduri", "rapoarte", "membri"},
     "sicarios": {"dashboard", "task", "pontaj", "jafuri", "loterie", "fonduri", "rapoarte", "membri"},
-    "asociat": {"dashboard", "pontaj", "jafuri", "fonduri", "rapoarte", "membri"},
+    "asociat": {"dashboard", "task", "pontaj", "jafuri", "fonduri", "rapoarte", "membri"},
     "loterie": {"dashboard", "pontaj", "loterie", "fonduri", "rapoarte", "membri"},
 }
 
@@ -413,14 +413,14 @@ async def create_task(body: TaskCreate, user: dict = Depends(require_roles("boss
 
 
 @api_router.get("/tasks")
-async def list_tasks(week: Optional[str] = None, user: dict = Depends(require_roles("boss", "sicarios"))):
+async def list_tasks(week: Optional[str] = None, user: dict = Depends(require_roles("boss", "sicarios", "asociat"))):
     q = {"week": week} if week else {}
     rows = await db.tasks.find(q).sort("created_at", -1).to_list(2000)
     return [clean(r) for r in rows]
 
 
 @api_router.patch("/tasks/{task_id}")
-async def toggle_task(task_id: str, user: dict = Depends(require_roles("boss", "sicarios"))):
+async def toggle_task(task_id: str, user: dict = Depends(require_roles("boss", "sicarios", "asociat"))):
     item = await db.tasks.find_one({"id": task_id})
     if not item:
         raise HTTPException(status_code=404, detail="Inexistent")
