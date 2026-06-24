@@ -4,13 +4,16 @@ import { useAuth } from "@/context/AuthContext";
 import { currentWeek } from "@/lib/utils-cartel";
 import { PageHeader, WeekNav } from "@/components/ui-cartel";
 import { toast } from "sonner";
-import { Check, Trash2, Plus, ChevronDown, ChevronUp, Users } from "lucide-react";
+import { Check, Trash2, Plus, ChevronDown, ChevronUp, Users, X } from "lucide-react";
+
+const TASK_ROLES = ["boss", "sicarios", "asociat"];
 
 export default function Task() {
   const { user, role } = useAuth();
-  const canManage = role === "boss" || role === "sicarios";
+  const canManage = role === "boss";
   const [week, setWeek] = useState(currentWeek());
   const [tasks, setTasks] = useState([]);
+  const [members, setMembers] = useState([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [expanded, setExpanded] = useState({});
@@ -19,6 +22,9 @@ export default function Task() {
   useEffect(() => {
     load();
   }, [week]);
+  useEffect(() => {
+    api.get("/members").then((r) => setMembers(r.data.filter((m) => TASK_ROLES.includes(m.role))));
+  }, []);
 
   const add = async (e) => {
     e.preventDefault();
@@ -69,7 +75,9 @@ export default function Task() {
         {tasks.length === 0 && <p className="text-cartel-textmuted text-sm">Niciun task pentru această săptămână.</p>}
         {tasks.map((t) => {
           const completed = t.completed_by || [];
-          const mine = completed.some((c) => c.user_id === user?.id);
+          const doneIds = new Set(completed.map((c) => c.user_id));
+          const notDone = members.filter((m) => !doneIds.has(m.id));
+          const mine = doneIds.has(user?.id);
           const isOpen = expanded[t.id];
           return (
             <div key={t.id} className="bg-cartel-surface border border-cartel-border rounded-sm" data-testid={`task-item-${t.id}`}>
@@ -82,16 +90,16 @@ export default function Task() {
                   <Check size={16} />
                 </button>
                 <div className="flex-1 min-w-0">
-                  <div className={`text-cartel-text ${completed.length ? "" : ""}`}>{t.title}</div>
+                  <div className="text-cartel-text">{t.title}</div>
                   {t.description && <div className="text-cartel-textsec text-sm">{t.description}</div>}
                 </div>
                 <button
                   data-testid={`task-completed-count-${t.id}`}
                   onClick={() => toggleExpand(t.id)}
-                  className={`shrink-0 inline-flex items-center gap-1.5 text-xs font-mono px-2.5 py-1 rounded-sm transition-colors ${completed.length ? "bg-cartel-success/15 text-cartel-success hover:bg-cartel-success/25" : "bg-cartel-border/40 text-cartel-textsec"}`}
+                  className="shrink-0 inline-flex items-center gap-1.5 text-xs font-mono px-2.5 py-1 rounded-sm bg-cartel-success/15 text-cartel-success hover:bg-cartel-success/25 transition-colors"
                 >
-                  <Users size={12} /> {completed.length} au bifat
-                  {completed.length > 0 && (isOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
+                  <Users size={12} /> {completed.length}/{members.length} au bifat
+                  {isOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                 </button>
                 {canManage && (
                   <button data-testid={`task-delete-${t.id}`} onClick={() => remove(t.id)} className="text-cartel-textmuted hover:text-cartel-danger transition-colors shrink-0">
@@ -99,16 +107,31 @@ export default function Task() {
                   </button>
                 )}
               </div>
-              {isOpen && completed.length > 0 && (
-                <div className="border-t border-cartel-border/60 bg-cartel-elevated/40 p-4" data-testid={`task-completed-list-${t.id}`}>
-                  <div className="label-mono mb-3">Membri care au realizat task-ul</div>
-                  <div className="flex flex-wrap gap-2">
-                    {completed.map((c) => (
-                      <div key={c.user_id} className="flex items-center gap-2 bg-cartel-surface border border-cartel-border rounded-sm pl-1.5 pr-3 py-1.5" data-testid={`task-member-${t.id}-${c.user_id}`}>
-                        <img src={c.avatar_url} alt="" className="w-6 h-6 rounded-sm bg-cartel-elevated object-cover" />
-                        <span className="text-sm text-cartel-text">{c.username}</span>
-                      </div>
-                    ))}
+              {isOpen && (
+                <div className="border-t border-cartel-border/60 bg-cartel-elevated/40 p-4 grid sm:grid-cols-2 gap-6" data-testid={`task-completed-list-${t.id}`}>
+                  <div>
+                    <div className="label-mono mb-3 text-cartel-success flex items-center gap-1.5"><Check size={12} /> Au realizat ({completed.length})</div>
+                    <div className="flex flex-wrap gap-2">
+                      {completed.length === 0 && <span className="text-cartel-textmuted text-sm">Nimeni încă.</span>}
+                      {completed.map((c) => (
+                        <div key={c.user_id} className="flex items-center gap-2 bg-cartel-surface border border-cartel-success/30 rounded-sm pl-1.5 pr-3 py-1.5" data-testid={`task-member-done-${t.id}-${c.user_id}`}>
+                          <img src={c.avatar_url} alt="" className="w-6 h-6 rounded-sm bg-cartel-elevated object-cover" />
+                          <span className="text-sm text-cartel-text">{c.username}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="label-mono mb-3 text-cartel-danger flex items-center gap-1.5"><X size={12} /> Nu au realizat ({notDone.length})</div>
+                    <div className="flex flex-wrap gap-2">
+                      {notDone.length === 0 && <span className="text-cartel-textmuted text-sm">Toți au bifat.</span>}
+                      {notDone.map((m) => (
+                        <div key={m.id} className="flex items-center gap-2 bg-cartel-surface border border-cartel-danger/30 rounded-sm pl-1.5 pr-3 py-1.5 opacity-80" data-testid={`task-member-pending-${t.id}-${m.id}`}>
+                          <img src={m.avatar_url} alt="" className="w-6 h-6 rounded-sm bg-cartel-elevated object-cover" />
+                          <span className="text-sm text-cartel-textsec">{m.username}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}

@@ -398,7 +398,7 @@ async def delete_loterie(item_id: str, user: dict = Depends(require_roles("boss"
 
 # ---------- Tasks (weekly) ----------
 @api_router.post("/tasks")
-async def create_task(body: TaskCreate, user: dict = Depends(require_roles("boss", "sicarios"))):
+async def create_task(body: TaskCreate, user: dict = Depends(require_roles("boss"))):
     doc = {
         "id": str(uuid.uuid4()),
         "title": body.title,
@@ -440,7 +440,7 @@ async def toggle_task(task_id: str, user: dict = Depends(require_roles("boss", "
 
 
 @api_router.delete("/tasks/{task_id}")
-async def delete_task(task_id: str, user: dict = Depends(require_roles("boss", "sicarios"))):
+async def delete_task(task_id: str, user: dict = Depends(require_roles("boss"))):
     await db.tasks.delete_one({"id": task_id})
     return {"ok": True}
 
