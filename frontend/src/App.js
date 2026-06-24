@@ -1,54 +1,63 @@
-import { useEffect } from "react";
 import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
-import { HOME } from "@/constants/testIds";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { Toaster } from "sonner";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
+import Sidebar from "@/components/Sidebar";
+import Login from "@/pages/Login";
+import AuthCallback from "@/pages/AuthCallback";
+import Dashboard from "@/pages/Dashboard";
+import Task from "@/pages/Task";
+import Pontaj from "@/pages/Pontaj";
+import Jafuri from "@/pages/Jafuri";
+import Loterie from "@/pages/Loterie";
+import Fonduri from "@/pages/Fonduri";
+import Rapoarte from "@/pages/Rapoarte";
+import Membri from "@/pages/Membri";
+import { Loader2 } from "lucide-react";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
-
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
-
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
-
+function ProtectedLayout() {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-cartel-red" />
+      </div>
+    );
+  }
+  if (!user) return <Navigate to="/" replace />;
   return (
-    <div>
-      <header className="App-header">
-        <a
-          data-testid={HOME.emergentLink}
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
+    <div className="flex min-h-screen bg-cartel-bg">
+      <Sidebar />
+      <main className="flex-1 min-w-0 p-6 md:p-10 overflow-x-hidden">
+        <Outlet />
+      </main>
     </div>
   );
-};
+}
 
 function App() {
   return (
-    <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+    <div className="App dark">
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Login />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route path="/app" element={<ProtectedLayout />}>
+              <Route index element={<Dashboard />} />
+              <Route path="task" element={<Task />} />
+              <Route path="pontaj" element={<Pontaj />} />
+              <Route path="jafuri" element={<Jafuri />} />
+              <Route path="loterie" element={<Loterie />} />
+              <Route path="fonduri" element={<Fonduri />} />
+              <Route path="rapoarte" element={<Rapoarte />} />
+              <Route path="membri" element={<Membri />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+      <Toaster theme="dark" position="top-right" richColors />
     </div>
   );
 }
