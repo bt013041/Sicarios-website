@@ -7,4 +7,4 @@ PyJWT==2.13.0
 httpx==0.28.1
 pydantic==2.13.4
 starlette==0.37.2
-dnspython==2.8.0
+dnspython==2.8.0 
