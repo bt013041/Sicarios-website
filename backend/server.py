@@ -322,12 +322,59 @@ async def delete_pontaj(item_id: str, user: dict = Depends(get_current_user)):
     return {"ok": True}
 
 
-# ---------- Jafuri ----------
+# ---------- SICARIOS DISCORD + JAFURI ----------
+
+DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK_URL")
+
+
+async def send_discord_webhook(doc):
+    if not DISCORD_WEBHOOK:
+        print("DISCORD_WEBHOOK_URL lipseste din Render")
+        return
+
+    suma = int(doc.get("amount", 0))
+    taxa = 1000 if doc.get("type") == "banca" else 0
+    suma_ramasa = max(suma - taxa, 0)
+
+    participanti = doc.get("participants", [])
+    nr_participanti = len(participanti) if participanti else 1
+    castig = suma_ramasa // nr_participanti
+
+    embed = {
+        "title": "🚨 Jaf înregistrat",
+        "description": "Un jaf nou a fost adăugat pe site-ul Sicarios.",
+        "color": 0xff0000,
+        "fields": [
+            {"name": "🏦 Tip", "value": str(doc.get("type", "-")), "inline": True},
+            {"name": "📍 Locație", "value": str(doc.get("location", "-")), "inline": True},
+            {"name": "💰 Sumă totală", "value": f"{suma:,}$", "inline": True},
+            {"name": "🏛️ Taxă bancă", "value": f"-{taxa:,}$", "inline": True},
+            {"name": "✅ Sumă rămasă", "value": f"{suma_ramasa:,}$", "inline": True},
+            {"name": "👥 Participanți", "value": ", ".join(participanti) if participanti else "-", "inline": False},
+            {"name": "💸 Fiecare primește", "value": f"{castig:,}$", "inline": True},
+            {"name": "👤 Înregistrat de", "value": str(doc.get("username", "-")), "inline": True},
+        ],
+        "footer": {"text": "Sicarios Logs"},
+        "timestamp": doc.get("created_at")
+    }
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(DISCORD_WEBHOOK, json={"embeds": [embed]})
+        print("Discord status:", response.status_code)
+        print("Discord response:", response.text)
+        response.raise_for_status()
+
+
 @api_router.post("/jafuri")
-async def create_jaf(body: JafCreate, user: dict = Depends(require_roles("boss", "sicarios", "asociat"))):
+async def create_jaf(
+    body: JafCreate,
+    user: dict = Depends(require_roles("boss", "sicarios", "asociat"))
+):
     if body.type not in ("magazin", "banca"):
         raise HTTPException(status_code=400, detail="Tip invalid")
+
     d = parse_date(body.date)
+
     doc = {
         "id": str(uuid.uuid4()),
         "user_id": user["id"],
@@ -342,28 +389,46 @@ async def create_jaf(body: JafCreate, user: dict = Depends(require_roles("boss",
         "week": iso_week_str(d),
         "created_at": now_iso(),
     }
+
     await db.jafuri.insert_one(doc)
+    print("JAF SALVAT - urmeaza Discord")
+
+    try:
+        await send_discord_webhook(doc)
+        print("DISCORD FUNCTIE APELATA")
+    except Exception as e:
+        print("DISCORD ERROR:", e)
+
     return clean(doc)
 
 
 @api_router.get("/jafuri")
-async def list_jafuri(week: Optional[str] = None, user: dict = Depends(require_roles("boss", "sicarios", "asociat"))):
+async def list_jafuri(
+    week: Optional[str] = None,
+    user: dict = Depends(require_roles("boss", "sicarios", "asociat"))
+):
     q = {"week": week} if week else {}
     rows = await db.jafuri.find(q).sort("date", -1).to_list(2000)
     return [clean(r) for r in rows]
 
 
 @api_router.delete("/jafuri/{item_id}")
-async def delete_jaf(item_id: str, user: dict = Depends(require_roles("boss", "sicarios", "asociat"))):
+async def delete_jaf(
+    item_id: str,
+    user: dict = Depends(require_roles("boss", "sicarios", "asociat"))
+):
     item = await db.jafuri.find_one({"id": item_id})
+
     if not item:
         raise HTTPException(status_code=404, detail="Inexistent")
+
     if user["role"] != "boss" and item["user_id"] != user["id"]:
         raise HTTPException(status_code=403, detail="Nu ai voie")
+
     await db.jafuri.delete_one({"id": item_id})
-    return {"ok": True}
-
-
+    
+    return {"ok": True}}
+    
 # ---------- Loterie ----------
 @api_router.post("/loterie")
 async def create_loterie(body: LoterieCreate, user: dict = Depends(require_roles("boss", "sicarios"))):
